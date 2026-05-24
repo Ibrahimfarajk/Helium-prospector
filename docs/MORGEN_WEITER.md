@@ -51,7 +51,7 @@
 | Was | Wo |
 |---|---|
 | Supabase URL + Keys (anon, service_role) | `web/.env.local` und `pipeline/.env` (lokal, gitignored) |
-| DB-Passwort | `pipeline/.env`-Snippet von vorgestern in deinem Passwort-Manager (du hattest es mir geschickt: `UduZGmP7GW6MzhP4`) |
+| DB-Passwort | Im Passwort-Manager. NICHT in dieser Datei speichern. Wert wird zur Laufzeit aus `pipeline/.env` gelesen (gitignored). |
 | Vercel-CLI-Token | Schon auf deinem Rechner als `ibrahimk94-6261` eingeloggt (siehe `vercel whoami`) |
 | GitHub-Token | git-Remote ist konfiguriert, kein Token-Eintippen nötig |
 

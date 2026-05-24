@@ -211,7 +211,9 @@ Supabase macht **automatisches Daily-Backup** (Free-Tier behält 7 Tage). Für l
 pg_dump $DATABASE_URL > backup-$(date +%F).sql
 ```
 
-DATABASE_URL Format: `postgres://postgres:UduZGmP7GW6MzhP4@db.jkqgpfbnplthchifwhqy.supabase.co:5432/postgres`
+DATABASE_URL Format: `postgres://postgres:<DATABASE_PASSWORD>@db.<PROJECT_REF>.supabase.co:5432/postgres`
+
+Den Wert von `<DATABASE_PASSWORD>` aus dem Passwort-Manager nehmen — **niemals in dieses Dokument schreiben** (Repo ist private, aber Best Practice: keine Klartext-Credentials in committed Files).
 
 ---
 
