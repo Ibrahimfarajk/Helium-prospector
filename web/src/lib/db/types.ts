@@ -37,7 +37,8 @@ export type ActivityType =
   | "meeting_scheduled"
   | "document_sent"
   | "assigned"
-  | "reassigned";
+  | "reassigned"
+  | "lead_rated";
 
 // ─────────────────────────────────────────────────────────────────────────
 

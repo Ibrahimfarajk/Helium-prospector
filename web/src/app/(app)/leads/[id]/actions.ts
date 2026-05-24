@@ -66,6 +66,35 @@ export async function addNote(leadId: string, note: string) {
   return { ok: true };
 }
 
+export type LeadRating = "top" | "ok" | "schlecht";
+
+export async function rateLead(leadId: string, rating: LeadRating, note?: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("not_authenticated");
+
+  await (supabase.from("lead_activities") as any).insert({
+    lead_id: leadId,
+    user_id: user.id,
+    activity_type: "lead_rated",
+    payload: { rating },
+    note_md: note?.trim() || null,
+  });
+
+  await (supabase.from("audit_log") as any).insert({
+    user_id: user.id,
+    action: "lead.rated",
+    resource_type: "lead",
+    resource_id: leadId,
+    payload: { rating },
+  });
+
+  revalidatePath(`/leads/${leadId}`);
+  return { ok: true };
+}
+
 export async function markDoNotContact(leadId: string, reason: string) {
   const supabase = await createClient();
   const {

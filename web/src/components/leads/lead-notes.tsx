@@ -20,6 +20,7 @@ const ACTIVITY_LABEL: Record<string, string> = {
   document_sent: "Dokument gesendet",
   assigned: "Zugewiesen",
   reassigned: "Neu zugewiesen",
+  lead_rated: "Bewertet",
 };
 
 export function LeadNotes({
@@ -108,6 +109,14 @@ export function LeadNotes({
               {a.payload && a.activity_type === "status_change" && (
                 <p className="text-xs text-[var(--muted-foreground)]">
                   {String(a.payload.from ?? "—")} → <span className="text-[var(--foreground)]">{String(a.payload.to ?? "—")}</span>
+                </p>
+              )}
+              {a.payload && a.activity_type === "lead_rated" && (
+                <p className="text-xs">
+                  <span className="text-[var(--muted-foreground)]">Bewertung: </span>
+                  <span className="text-[var(--foreground)] font-medium">
+                    {String((a.payload as { rating?: string }).rating ?? "—")}
+                  </span>
                 </p>
               )}
             </li>

@@ -50,19 +50,41 @@ _PHONE_PATTERN = re.compile(
 def normalize_phone(raw: str) -> str:
     """Normalize: '+49 (0)89 1234-5678' → '+49 89 1234-5678'"""
     cleaned = raw.strip()
-    # remove (0) from internat. notation
     cleaned = re.sub(r"\(0\)", "", cleaned)
-    # collapse spaces
     cleaned = re.sub(r"\s+", " ", cleaned)
     return cleaned
 
 
+_SERVICE_PREFIXES = re.compile(
+    r"\b0?(800|180|137|185|190|900|137)\b"  # Service-/Sondernummern
+)
+
+
+def is_service_number(phone: str) -> bool:
+    """0800/0180/0900-Hotlines — keine echten Firmen-Kontakte."""
+    digits = re.sub(r"[^\d]", "", phone)
+    # Sicherheitsabfrage: nach Country-Code 49 die nächsten 3 Ziffern
+    if digits.startswith("49"):
+        digits = digits[2:]
+    if digits.startswith("0"):
+        digits = digits[1:]
+    return bool(re.match(r"(800|180|137|185|190|900)", digits))
+
+
 def extract_phone_from_html(html: str) -> str | None:
     text = HTMLParser(html).text(separator="\n")
-    m = _PHONE_PATTERN.search(text)
-    if not m:
-        return None
-    return normalize_phone(m.group(0))
+    # Sammle alle Treffer, nicht nur den ersten
+    candidates = [m.group(0) for m in _PHONE_PATTERN.finditer(text)]
+    for raw in candidates:
+        norm = normalize_phone(raw)
+        if is_service_number(norm):
+            continue
+        # Min 7 digits nach country code (echte Anschlüsse)
+        digit_only = re.sub(r"[^\d]", "", norm)
+        if len(digit_only) < 9:
+            continue
+        return norm
+    return None
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -116,14 +138,28 @@ async def find_company_domain(
             "cylex", "implisense", "creditsafe", "companyhouse",
             "wer-zu-wem", "bisnode", "ec", "duckduckgo",
             "yelp", "gelbeseiten", "11880", "dasoertliche", "branchenbuch",
+            "firmenwissen", "moneyhouse", "krankenkassen-zentrale",
             # Register / Behörden
             "handelsregister", "handelsregisterbekanntmachungen",
             "unternehmensregister", "bundesanzeiger", "bafin",
             "ihk", "destatis", "europa", "transparenzregister",
+            "amtsgericht", "justiz", "bundesregierung",
+            # Stadt-Behörden / 0800-Hotlines
+            "muenchen", "munich", "hamburg", "berlin", "frankfurt", "koeln",
+            "stuttgart", "duesseldorf", "leipzig", "dresden", "hannover",
+            "bremen", "nuernberg", "essen", "dortmund", "service-bw",
             # Wirtschaftsauskunft
             "creditreform", "schufa", "kapital", "boniforce", "moodys",
-            # Presse / News
+            "dnb", "bisnode", "experian",
+            # Presse / News / Aktien-Sites
             "presseportal", "finanznachrichten", "wallstreet-online",
+            "ariva", "onvista", "boerse", "finanzen", "boersennews",
+            # Bürgschaftsbanken / Kammern
+            "baybg", "buergschaftsbank", "handwerkskammer",
+            # Social
+            "twitter", "x", "instagram", "tiktok", "youtube",
+            # Generic Software-Provider-Footer
+            "wordpress", "wix", "jimdo", "shopify",
         }
         if ext.suffix in {"de", "at", "ch", "com"} and ext.domain not in blocked:
             return f"{ext.domain}.{ext.suffix}"

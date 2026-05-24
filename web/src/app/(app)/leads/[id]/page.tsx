@@ -11,8 +11,19 @@ import { LeadStatusPipeline } from "@/components/leads/lead-status-pipeline";
 import { LeadNotes } from "@/components/leads/lead-notes";
 import { LeadDossier } from "@/components/leads/lead-dossier";
 import { LeadDangerActions } from "@/components/leads/lead-danger-actions";
+import { LeadRating } from "@/components/leads/lead-rating";
 
 export const dynamic = "force-dynamic";
+
+import type { LeadActivity } from "@/lib/db/types";
+import type { LeadRating as LeadRatingType } from "./actions";
+
+function getLatestRating(activities: LeadActivity[]): LeadRatingType | undefined {
+  const rated = activities.find((a) => a.activity_type === "lead_rated");
+  const r = (rated?.payload as { rating?: string } | null)?.rating;
+  if (r === "top" || r === "ok" || r === "schlecht") return r;
+  return undefined;
+}
 
 export default async function LeadDetailPage({
   params,
@@ -140,6 +151,13 @@ export default async function LeadDetailPage({
 
         {/* Sidebar — Belege + Score-Details */}
         <div className="space-y-6">
+          <Card className="p-5">
+            <LeadRating
+              leadId={lead.id}
+              currentRating={getLatestRating(activities)}
+            />
+          </Card>
+
           <Card className="p-5">
             <h3 className="text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] mb-3">
               Belege

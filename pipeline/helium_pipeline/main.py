@@ -53,6 +53,7 @@ async def run_pipeline(
     output_dir: Path,
     source: str = "live",  # "live" oder "mock"
     mock_count: int = 25,
+    max_leads: int | None = None,  # Hard-Cap auf yielded items (Live-Tests)
 ) -> None:
     configure_logging()
     run = CrawlRun()
@@ -96,6 +97,9 @@ async def run_pipeline(
                         max_pages=max_pages,
                     )
                 async for bek in iterator:
+                    if max_leads is not None and summary["bekanntmachungen"] >= max_leads:
+                        log.info("max_leads_cap_reached", cap=max_leads)
+                        break
                     summary["bekanntmachungen"] += 1
 
                     # 1. Bundesanzeiger-Enrich (nur bei klar trigger-relevanten Typen)
@@ -376,6 +380,12 @@ async def _to_async_iter(items):
     help="Anzahl Mock-Bekanntmachungen (nur bei --source=mock)",
 )
 @click.option(
+    "--max-leads",
+    type=int,
+    default=None,
+    help="Hard-Cap auf Anzahl verarbeiteter Bekanntmachungen (Live-Test).",
+)
+@click.option(
     "--output-dir",
     type=click.Path(path_type=Path),
     default=Path("./local_data"),
@@ -387,6 +397,7 @@ def run_cmd(
     days_back: int,
     source: str,
     mock_count: int,
+    max_leads: int | None,
     output_dir: Path,
 ):
     """Crawl handelsregister.de + score + (optional) push to Supabase."""
@@ -398,6 +409,7 @@ def run_cmd(
             output_dir=output_dir,
             source=source,
             mock_count=mock_count,
+            max_leads=max_leads,
         )
     )
 

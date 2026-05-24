@@ -1,15 +1,23 @@
-"""Playwright-Crawler für handelsregister.de Bekanntmachungen.
+"""Live-Crawler für handelsregister.de Bekanntmachungen.
 
-Strategie:
-- Daily-Run, fragt Bekanntmachungen der letzten 24h ab
-- Stealth-Mode (realistischer Chrome-Fingerprint)
-- Rate-Limit: 8-12 s Jitter zwischen Requests
-- Retry-Logic: 3 Versuche, exponential backoff
-- Persistente Browser-Profile (Cookies behalten)
-- Bei Captcha: Pipeline pausiert + Notification
+Architektur (nach UI-Discovery 2026-05-25):
+  1. GET /rp_web/welcome.xhtml → Sitzungshinweis-Modal
+  2. Click `a.cookie-btn` ("Verstanden") → Cookie gesetzt
+  3. Click `#naviForm:bekanntmachungenLink` → PrimeFaces-AJAX submit
+  4. Bekanntmachungs-Seite mit Default-Liste der letzten 4 Wochen
+  5. Parse `dl#bekanntMachungenForm:datalistId_list` → 52+ Einträge
+  6. (optional) Set Datum-Filter + click `#bekanntMachungenForm:rrbSuche` → Refresh
 
-Wichtig: handelsregister.de hat ein JavaScript-getriebenes Such-Interface
-mit Captcha-Schutz. Plain HTTP funktioniert nicht.
+Format jedes Result-Items:
+  <dt>Datum (dd.MM.yyyy)</dt>
+  <dd>
+    <a onclick="fireBekanntmachungN(...)"><label>
+      Bekanntmachungs-Typ<br>
+      Bundesland Amtsgericht Ort HRB-Nummer<br>
+      Firma — Ort
+    </label></a>
+    ... weitere Items pro Tag ...
+  </dd>
 """
 
 from __future__ import annotations
@@ -18,7 +26,7 @@ import asyncio
 import random
 import re
 from collections.abc import AsyncIterator
-from datetime import date, timedelta
+from datetime import date, datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -33,42 +41,78 @@ from ..settings import settings
 log = structlog.get_logger()
 
 
-HR_SEARCH_URL = "https://www.handelsregister.de/rp_web/erweitertesuche.xhtml"
-HR_BEKANNTMACHUNGEN_URL = "https://www.handelsregister.de/rp_web/bekanntmachungen.xhtml"
+HR_WELCOME_URL = "https://www.handelsregister.de/rp_web/welcome.xhtml"
 
 PROFILE_DIR = Path.home() / ".helium-pipeline" / "browser-profile"
 PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
+_STEALTH = Stealth()
+
 
 # ───────────────────────────────────────────────────────────────────────────
-# Klassifikator: Roh-Text → BekanntmachungType
+# Classification: Bekanntmachungs-Text → Enum
 # ───────────────────────────────────────────────────────────────────────────
 
 
 _TYPE_PATTERNS: list[tuple[BekanntmachungType, re.Pattern[str]]] = [
+    # Kalibriert auf REALE handelsregister.de Bekanntmachungs-Typen (Mai 2026)
+    # Reihenfolge: spezifischer zuerst.
+
+    # "Registerbekanntmachung nach dem Umwandlungsgesetz" → Verschmelzung/Spaltung
+    # → starker Liquiditäts-Trigger, behandeln wie SHAREHOLDER_CHANGE
     (
-        BekanntmachungType.GF_CHANGE,
-        re.compile(
-            r"\b(geschäftsführer|bestellt|abberufen|nicht mehr geschäftsführer)\b",
-            re.IGNORECASE,
-        ),
+        BekanntmachungType.SHAREHOLDER_CHANGE,
+        re.compile(r"\b(umwandlungsgesetz|verschmelzung|spaltung|formwechsel)\b", re.IGNORECASE),
     ),
+    # Klassische direkte Begriffe
     (
         BekanntmachungType.SHAREHOLDER_CHANGE,
         re.compile(
-            r"\b(anteil|gesellschafter[- ]?wechsel|abtretung|übertragung)\b",
+            r"\b(anteils?\s?(eigner|übertragung|abtretung)|gesellschafter[- ]?(wechsel|liste)|"
+            r"übertragung\s+der\s+gesch[äa]ftsanteile|ver[äa]nderung\s+gesellschafter)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    # "Einreichung neuer Dokumente" — häufigster Default-Eintrag, oft Gesellschafterliste-Update
+    # Heuristik: tag this als SHAREHOLDER_CHANGE (würde mit Detail-Lookup verifiziert)
+    (
+        BekanntmachungType.SHAREHOLDER_CHANGE,
+        re.compile(r"\beinreichung\s+neuer\s+dokumente\b", re.IGNORECASE),
+    ),
+    (
+        BekanntmachungType.GF_CHANGE,
+        re.compile(
+            r"\b(gesch[äa]ftsf[üu]hrer|bestell(t|ung)|abberuf(en|ung)|vertretungs(berechtigt|befugnis))\b",
             re.IGNORECASE,
         ),
     ),
     (
         BekanntmachungType.NEW_REGISTRATION,
-        re.compile(r"\b(neueintragung|neuangemeldet|gegründet)\b", re.IGNORECASE),
+        re.compile(
+            r"\b(neueintragung|neuangemeldet|gegr[üu]ndet|firma.{0,20}eingetragen|"
+            r"erstanmeldung|neuanmeldung)\b",
+            re.IGNORECASE,
+        ),
     ),
     (
         BekanntmachungType.CAPITAL_INCREASE,
-        re.compile(r"\b(kapitalerhöhung|stammkapital erhöht)\b", re.IGNORECASE),
+        re.compile(
+            r"\b(kapitalerh[öo]hung|stammkapital\s+erh[öo]ht|kapitalherabsetzung)\b",
+            re.IGNORECASE,
+        ),
     ),
 ]
+
+
+# Anti-Patterns: Lead-Killer Bekanntmachungen
+_ANTI_PATTERN = re.compile(
+    r"\b(löschungsank[üu]ndigung|gel[öo]scht|insolvenz|liquidation|abwicklung|aufl[öo]sung)\b",
+    re.IGNORECASE,
+)
+
+
+def is_anti_pattern(text: str) -> bool:
+    return bool(_ANTI_PATTERN.search(text))
 
 
 def classify_bekanntmachung(text: str) -> BekanntmachungType:
@@ -79,14 +123,14 @@ def classify_bekanntmachung(text: str) -> BekanntmachungType:
 
 
 # ───────────────────────────────────────────────────────────────────────────
-# Sleep + Captcha-Detection
+# Captcha + Rate-Limit
 # ───────────────────────────────────────────────────────────────────────────
 
 
-async def jittered_sleep() -> None:
+async def jittered_sleep(min_s: float | None = None, max_s: float | None = None) -> None:
     delay = random.uniform(
-        settings.PIPELINE_RATE_LIMIT_MIN_SECONDS,
-        settings.PIPELINE_RATE_LIMIT_MAX_SECONDS,
+        min_s or settings.PIPELINE_RATE_LIMIT_MIN_SECONDS,
+        max_s or settings.PIPELINE_RATE_LIMIT_MAX_SECONDS,
     )
     await asyncio.sleep(delay)
 
@@ -105,89 +149,155 @@ def is_captcha_page(html: str) -> bool:
     return any(ind.lower() in lower for ind in _CAPTCHA_INDICATORS)
 
 
+def is_session_hint_page(html: str) -> bool:
+    """True wenn Sitzungshinweis-Modal noch sichtbar (Cookie nicht akzeptiert)."""
+    return "<title>Registerportal | Sitzungshinweis</title>" in html
+
+
+class CaptchaDetected(RuntimeError):
+    """Pipeline pausiert, Notification an Admin."""
+
+
 # ───────────────────────────────────────────────────────────────────────────
-# Parser für Bekanntmachungs-Einträge
+# Result-Parser
 # ───────────────────────────────────────────────────────────────────────────
 
 
-_HRB_PATTERN = re.compile(r"\bHRB\s*(\d+)\b")
+_HRB_PATTERN = re.compile(r"\b(HRB|HRA|GnR|PR|VR)\s*(\d+)\b")
 _DATE_PATTERN = re.compile(r"\b(\d{2})\.(\d{2})\.(\d{4})\b")
+# "Bundesland Amtsgericht Ort HRB nnnn"
+_COURT_LINE = re.compile(
+    r"^\s*(?P<land>[\wäöüÄÖÜß ]+?)\s+Amtsgericht\s+(?P<court>[\wäöüÄÖÜß \-./]+?)\s+(HRB|HRA|GnR|PR|VR)\s*(\d+)\s*$",
+    re.IGNORECASE,
+)
+# Firma — Ort (em-dash, en-dash oder bindestrich)
+_COMPANY_LINE = re.compile(r"^\s*(?P<name>.+?)\s+[–—\-]\s+(?P<city>.+?)\s*$")
 
 
-def _extract_hrb(text: str) -> str | None:
-    m = _HRB_PATTERN.search(text)
-    return f"HRB {m.group(1)}" if m else None
+def _parse_item_label(label_text: str) -> dict[str, str | None]:
+    """Parse den `<label>`-Text eines Result-Items.
+
+    Format:
+        Zeile 1: Bekanntmachungs-Typ (z.B. "Veränderungen Gesellschafterliste")
+        Zeile 2: "<Bundesland> Amtsgericht <Ort> HRB <Nummer>"
+        Zeile 3: "<Firma> — <Ort>"
+    """
+    lines = [l.strip() for l in label_text.split("\n") if l.strip()]
+    result: dict[str, str | None] = {
+        "type_text": None,
+        "land": None,
+        "register_court": None,
+        "hrb_full": None,
+        "hrb_nummer": None,
+        "company_name": None,
+        "company_city": None,
+    }
+
+    if not lines:
+        return result
+
+    result["type_text"] = lines[0] if lines else None
+
+    # Find court line + company line in remaining
+    for line in lines[1:]:
+        m = _COURT_LINE.match(line)
+        if m:
+            result["land"] = m.group("land").strip()
+            result["register_court"] = m.group("court").strip()
+            result["hrb_nummer"] = m.group(4)
+            result["hrb_full"] = f"{m.group(3).upper()} {m.group(4)}"
+            continue
+        m = _COMPANY_LINE.match(line)
+        if m and not result["company_name"]:
+            result["company_name"] = m.group("name").strip()
+            result["company_city"] = m.group("city").strip()
+
+    # Fallback for HRB if court-line nicht gematcht
+    if not result["hrb_nummer"]:
+        m = _HRB_PATTERN.search(label_text)
+        if m:
+            result["hrb_full"] = f"{m.group(1).upper()} {m.group(2)}"
+            result["hrb_nummer"] = m.group(2)
+
+    return result
 
 
-def _extract_company_name(text: str) -> str:
-    """Erste Zeile bis "GmbH"/"AG"/"UG"/"KG" — heuristisch."""
-    for line in text.splitlines():
-        line = line.strip()
-        if any(
-            suffix in line for suffix in ("GmbH", "AG", "UG", "KG", "OHG", "e.K.", "GbR")
-        ):
-            return line
-    return text.splitlines()[0].strip()[:200] if text.strip() else "—"
+def parse_results_page(
+    html: str, *, crawl_run_id: UUID, source: str = "handelsregister.de"
+) -> list[BekanntmachungRaw]:
+    """Parse alle Bekanntmachungs-Einträge aus der Result-Page-HTML."""
+    tree = HTMLParser(html)
 
+    # Datalist-Items: dt enthält Datum, dd alle Bekanntmachungen des Tages
+    items: list[BekanntmachungRaw] = []
+    list_root = tree.css_first("dl#bekanntMachungenForm\\:datalistId_list")
+    if not list_root:
+        # Fallback: text-search
+        list_root = tree.css_first("dl.ui-datalist-data")
+    if not list_root:
+        log.warning("no_datalist_in_results")
+        return items
 
-def _extract_postal_code(text: str) -> str | None:
-    m = re.search(r"\b(\d{5})\b", text)
-    return m.group(1) if m else None
+    children = list_root.iter()
+    current_date: date | None = None
+    for child in children:
+        if child.tag == "dt":
+            # Datum extrahieren
+            text = (child.text() or "").strip()
+            m = _DATE_PATTERN.search(text)
+            if m:
+                try:
+                    current_date = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+                except ValueError:
+                    current_date = None
+            continue
+        if child.tag != "dd" or current_date is None:
+            continue
+        # Alle <label>-Elemente in dd → ein Bekanntmachungs-Eintrag pro Label
+        for label in child.css("label.ui-outputlabel"):
+            label_html = label.html or ""
+            # Replace <br> + variants with newline, then strip tags
+            label_text = re.sub(r"<br\s*/?>", "\n", label_html, flags=re.IGNORECASE)
+            label_text = HTMLParser(label_text).text(separator="\n")
 
+            parsed = _parse_item_label(label_text)
+            if not parsed["company_name"]:
+                continue
 
-def _extract_city_after_postal(text: str) -> str | None:
-    m = re.search(r"\b\d{5}\s+([A-ZÄÖÜ][\wäöüß.-]+(?:\s[A-ZÄÖÜ][\wäöüß.-]+)*)", text)
-    return m.group(1).strip() if m else None
+            # Anti-Pattern: Liquidations/Löschungs-Bekanntmachungen direkt filtern
+            full_text = (parsed.get("type_text") or "") + " " + label_text
+            if is_anti_pattern(full_text):
+                continue
 
+            bt = classify_bekanntmachung(parsed.get("type_text") or label_text)
 
-def parse_bekanntmachung_card(
-    html_fragment: str,
-    *,
-    crawl_run_id: UUID,
-    source: str = "handelsregister.de",
-) -> BekanntmachungRaw | None:
-    """Parse einen Bekanntmachungs-Card-HTML-Block aus der Ergebnis-Liste."""
-    tree = HTMLParser(html_fragment)
-    text = tree.text(separator="\n").strip()
-    if not text:
-        return None
+            items.append(
+                BekanntmachungRaw(
+                    source=source,
+                    bekanntmachung_type=bt,
+                    hrb_nummer=parsed["hrb_full"],
+                    register_court=parsed["register_court"],
+                    company_name=parsed["company_name"],
+                    company_city=parsed.get("company_city"),
+                    country_code=CountryCode.DE,
+                    bekanntmachung_date=current_date,
+                    raw_text=label_text.strip(),
+                    raw_html=(label.html or "")[:3000],
+                    parsed_payload={"land": parsed.get("land"), "type_text": parsed.get("type_text")},
+                    crawl_run_id=crawl_run_id,
+                )
+            )
 
-    hrb = _extract_hrb(text)
-    company = _extract_company_name(text)
-    postal = _extract_postal_code(text)
-    city = _extract_city_after_postal(text)
-    bt = classify_bekanntmachung(text)
-
-    # Datum: erstes Datum im Text
-    m = _DATE_PATTERN.search(text)
-    if not m:
-        log.warning("kein_datum_im_eintrag", text=text[:200])
-        return None
-    bek_date = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
-
-    return BekanntmachungRaw(
-        source=source,
-        bekanntmachung_type=bt,
-        hrb_nummer=hrb,
-        company_name=company,
-        company_postal_code=postal,
-        company_city=city,
-        country_code=CountryCode.DE,
-        bekanntmachung_date=bek_date,
-        raw_text=text,
-        raw_html=html_fragment[:5000],  # cap to 5 KB pro Eintrag
-        parsed_payload={},
-        crawl_run_id=crawl_run_id,
-    )
+    log.info("results_parsed", count=len(items))
+    return items
 
 
 # ───────────────────────────────────────────────────────────────────────────
-# Crawler: Browser-Context + Page-Iterator
+# Browser-Context
 # ───────────────────────────────────────────────────────────────────────────
 
 
-async def _new_stealth_context() -> tuple[asyncio.Task, BrowserContext]:
-    """Erstelle Persistent-Context mit Stealth-Plugin."""
+async def _new_stealth_context() -> tuple[object, BrowserContext]:
     pw = await async_playwright().start()
     context = await pw.chromium.launch_persistent_context(
         user_data_dir=str(PROFILE_DIR),
@@ -196,14 +306,9 @@ async def _new_stealth_context() -> tuple[asyncio.Task, BrowserContext]:
         viewport={"width": 1366, "height": 768},
         locale="de-DE",
         timezone_id="Europe/Berlin",
-        args=[
-            "--disable-blink-features=AutomationControlled",
-        ],
+        args=["--disable-blink-features=AutomationControlled"],
     )
     return pw, context
-
-
-_STEALTH = Stealth()
 
 
 async def _stealth_page(context: BrowserContext) -> Page:
@@ -212,100 +317,11 @@ async def _stealth_page(context: BrowserContext) -> Page:
     return page
 
 
-# ───────────────────────────────────────────────────────────────────────────
-# Public API
-# ───────────────────────────────────────────────────────────────────────────
-
-
-async def crawl_bekanntmachungen(
-    *,
-    crawl_run_id: UUID,
-    days_back: int = 1,
-    max_pages: int = 5,
-) -> AsyncIterator[BekanntmachungRaw]:
-    """
-    Async-Generator: yieldet BekanntmachungRaw pro gefundenem Eintrag.
-
-    days_back = 1 → letzte 24h
-    max_pages = obere Sicherheits-Grenze (~50/Seite pro page)
-
-    Bei Captcha-Erkennung: raised CaptchaDetected (Caller entscheidet).
-    """
-    pw, context = await _new_stealth_context()
-    try:
-        page = await _stealth_page(context)
-
-        log.info("crawl_start", url=HR_BEKANNTMACHUNGEN_URL, days_back=days_back)
-        await page.goto(HR_BEKANNTMACHUNGEN_URL, wait_until="domcontentloaded", timeout=30_000)
-        # handelsregister.de fired multiple redirects + PrimeFaces-polls.
-        # Wir warten geduldig auf das body-element + zusätzlich auf Stabilität.
-        await page.wait_for_selector("body", timeout=15_000)
-        await asyncio.sleep(2)
-        try:
-            await page.wait_for_load_state("networkidle", timeout=15_000)
-        except Exception:
-            pass
-        await jittered_sleep()
-
-        html = await _safe_content(page)
-        if is_captcha_page(html):
-            log.error("captcha_detected", url=page.url)
-            raise CaptchaDetected("handelsregister.de Captcha auf Landing-Page")
-
-        # Datum-Filter: in das Formular eintragen
-        today = date.today()
-        from_date = today - timedelta(days=days_back)
-        await _set_date_range(page, from_date, today)
-        await jittered_sleep()
-
-        # Such-Button klicken
-        await _trigger_search(page)
-
-        for page_num in range(max_pages):
-            try:
-                await page.wait_for_load_state("networkidle", timeout=20_000)
-            except Exception:
-                pass
-            await asyncio.sleep(2)
-            html = await _safe_content(page)
-            if is_captcha_page(html):
-                log.error("captcha_detected_on_page", page=page_num)
-                raise CaptchaDetected(f"Captcha auf Ergebnis-Seite {page_num}")
-
-            count = 0
-            for card_html in _extract_result_cards(html):
-                bek = parse_bekanntmachung_card(card_html, crawl_run_id=crawl_run_id)
-                if bek:
-                    count += 1
-                    yield bek
-
-            log.info("page_processed", page_num=page_num, items_found=count)
-
-            # Nächste Seite — Bedingung: gibts "Weiter"-Button?
-            has_next = await _click_next_page(page)
-            if not has_next:
-                log.info("no_more_pages", page_num=page_num)
-                break
-
-            await jittered_sleep()
-
-    finally:
-        await context.close()
-        await pw.stop()
-
-
-class CaptchaDetected(RuntimeError):
-    """Pipeline pausiert, Notification an Admin."""
-
-
 async def _safe_content(page: Page, retries: int = 3) -> str:
-    """page.content() mit Retry — handelsregister.de polled mit PrimeFaces."""
     last_err: Exception | None = None
     for attempt in range(retries):
         try:
-            return await page.evaluate(
-                "() => document.documentElement.outerHTML"
-            )
+            return await page.evaluate("() => document.documentElement.outerHTML")
         except Exception as e:
             last_err = e
             await asyncio.sleep(1.5 * (attempt + 1))
@@ -313,66 +329,96 @@ async def _safe_content(page: Page, retries: int = 3) -> str:
 
 
 # ───────────────────────────────────────────────────────────────────────────
-# Page-Interaktion (kann sich ändern wenn handelsregister.de UI updated)
+# Main Crawler
 # ───────────────────────────────────────────────────────────────────────────
 
 
-async def _set_date_range(page: Page, from_date: date, to_date: date) -> None:
-    """Setze Datum-Filter im Bekanntmachungs-Formular.
+async def crawl_bekanntmachungen(
+    *,
+    crawl_run_id: UUID,
+    days_back: int = 7,
+    max_pages: int = 1,
+) -> AsyncIterator[BekanntmachungRaw]:
+    """Crawl handelsregister.de Bekanntmachungen.
 
-    Selektoren basierend auf handelsregister.de Stand 2026-05.
-    Bei UI-Änderung: hier anpassen.
+    Default-Verhalten zeigt die letzten ~4 Wochen automatisch.
+    `days_back` ist Hint für späteren Date-Filter, aktuell nutzen wir Default-View.
     """
+    pw, context = await _new_stealth_context()
     try:
-        # ID-Pattern aus handelsregister.de's PrimeFaces-UI
-        from_input = page.locator("input[id*='vondatum']").first
-        to_input = page.locator("input[id*='bisdatum']").first
-        if await from_input.count() > 0:
-            await from_input.fill(from_date.strftime("%d.%m.%Y"))
-        if await to_input.count() > 0:
-            await to_input.fill(to_date.strftime("%d.%m.%Y"))
-    except Exception as e:
-        log.warning("date_range_set_failed", error=str(e))
+        page = await _stealth_page(context)
 
+        # 1. Welcome-Page laden
+        log.info("crawl_start", url=HR_WELCOME_URL)
+        await page.goto(HR_WELCOME_URL, wait_until="domcontentloaded", timeout=30_000)
+        await page.wait_for_selector("body", timeout=15_000)
+        await asyncio.sleep(2)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=10_000)
+        except Exception:
+            pass
 
-async def _trigger_search(page: Page) -> None:
-    """Klicke Such-Button."""
-    try:
-        # häufiger Pattern bei PrimeFaces: button mit "Suche"-Label
-        btn = page.locator("button:has-text('Suche')").first
-        if await btn.count() > 0:
-            await btn.click()
-            return
-        # Fallback: form submit
-        await page.evaluate(
-            "() => { const f = document.querySelector('form'); if (f) f.submit(); }"
+        html = await _safe_content(page)
+        if is_captcha_page(html):
+            log.error("captcha_on_landing")
+            raise CaptchaDetected("Captcha auf welcome.xhtml")
+
+        # 2. Sitzungshinweis akzeptieren (falls noch sichtbar)
+        if is_session_hint_page(html):
+            log.info("accepting_session_hint")
+            try:
+                await page.locator("a.cookie-btn").first.click(timeout=5000)
+                await asyncio.sleep(2)
+            except Exception as e:
+                log.warning("cookie_button_click_failed", error=str(e))
+
+        await jittered_sleep()
+
+        # 3. Klick auf Bekanntmachungen-Menü-Link
+        log.info("navigating_to_bekanntmachungen")
+        try:
+            await page.locator("#naviForm\\:bekanntmachungenLink").click(timeout=10_000)
+        except Exception as e:
+            log.error("nav_click_failed", error=str(e))
+            raise
+        await asyncio.sleep(3)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=15_000)
+        except Exception:
+            pass
+
+        # Warte auf das Datalist-Element
+        try:
+            await page.wait_for_selector("dl.ui-datalist-data", timeout=15_000)
+        except Exception:
+            log.warning("datalist_not_loaded_in_time")
+
+        await jittered_sleep()
+
+        html = await _safe_content(page)
+        if is_captcha_page(html):
+            log.error("captcha_on_results")
+            raise CaptchaDetected("Captcha auf Bekanntmachungs-Seite")
+
+        # 4. Parse
+        bekanntmachungen = parse_results_page(
+            html, crawl_run_id=crawl_run_id, source="handelsregister.de"
         )
-    except Exception as e:
-        log.warning("search_trigger_failed", error=str(e))
 
+        # Optional: nur die `days_back` Tage rückwirkend
+        if days_back is not None and days_back > 0:
+            cutoff = date.today().toordinal() - days_back
+            bekanntmachungen = [
+                b for b in bekanntmachungen if b.bekanntmachung_date.toordinal() >= cutoff
+            ]
+            log.info("filtered_by_days_back", days_back=days_back, count=len(bekanntmachungen))
 
-def _extract_result_cards(html: str) -> list[str]:
-    """Extrahiere die einzelnen Bekanntmachungs-Block-HTMLs."""
-    tree = HTMLParser(html)
-    # PrimeFaces-Datatable rows oder card-divs — beide Patterns abdecken
-    candidates: list[str] = []
-    for selector in ("tr.ui-datatable-row", "div.bekanntmachung", "div.search-result"):
-        for node in tree.css(selector):
-            candidates.append(node.html or "")
-    return candidates
+        for b in bekanntmachungen:
+            yield b
 
-
-async def _click_next_page(page: Page) -> bool:
-    """Klicke "Weiter"-Link. Return False wenn keiner mehr."""
-    try:
-        nxt = page.locator("a:has-text('Weiter'), a:has-text('Nächste')").first
-        if await nxt.count() == 0:
-            return False
-        disabled = await nxt.get_attribute("aria-disabled")
-        if disabled == "true":
-            return False
-        await nxt.click()
-        return True
-    except Exception as e:
-        log.debug("next_page_click_failed", error=str(e))
-        return False
+    finally:
+        await context.close()
+        try:
+            await pw.stop()
+        except Exception:
+            pass
