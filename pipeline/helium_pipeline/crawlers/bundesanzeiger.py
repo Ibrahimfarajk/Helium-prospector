@@ -45,6 +45,43 @@ _EQUITY_LINE_PATTERNS = [
 _BALANCE_SUM_PATTERNS = [
     re.compile(r"Bilanzsumme[^\d-]*(-?[\d.,]+)\s*(?:EUR|€|Euro)?", re.IGNORECASE),
 ]
+# Phase 6.5-F1: Cashflow + Liquidität + Profitabilität
+_LIQUID_ASSETS_PATTERNS = [
+    re.compile(
+        r"(?:Kassenbestand,?\s*(?:Bundesbank|Postbank)?[^\n]{0,80}?Kreditinstitut|Liquide\s+Mittel|Guthaben\s+bei\s+Kreditinstituten|Kassenbestand\s+und\s+Bankguthaben)[^\d-]*(-?[\d.,]+)\s*(?:EUR|€|Euro|TEUR|Mio)?",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bZahlungsmittel(?:\s+und\s+Zahlungsmittel[äa]quivalente)?\b[^\d-]*(-?[\d.,]+)\s*(?:EUR|€|Euro|TEUR|Mio)?",
+        re.IGNORECASE,
+    ),
+]
+_OPERATING_CASHFLOW_PATTERNS = [
+    re.compile(
+        r"(?:Cashflow|Mittelzufluss|Mittelabfluss)\s+(?:aus\s+(?:der\s+)?(?:laufenden\s+|operativen\s+|gew[öo]hnlichen\s+)?Gesch[äa]ftst[äa]tigkeit|aus\s+der\s+gew[öo]hnlichen\s+T[äa]tigkeit)[^\d-]*(-?[\d.,]+)\s*(?:EUR|€|Euro|TEUR|Mio)?",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bOperativer\s+Cashflow\b[^\d-]*(-?[\d.,]+)",
+        re.IGNORECASE,
+    ),
+]
+_PROFIT_PATTERNS = [
+    re.compile(
+        r"(?:Jahres(?:[üu]bersch(?:uss|ü)|fehlbetrag)|Bilanzgewinn|Bilanzverlust)[^\d-]*(-?[\d.,]+)\s*(?:EUR|€|Euro|TEUR|Mio)?",
+        re.IGNORECASE,
+    ),
+]
+_PARAGRAPH_PATTERNS = {
+    "§16 EStG": re.compile(r"§\s*16\s*(?:Abs\.?\s*\d+\s*)?EStG", re.IGNORECASE),
+    "§34 EStG": re.compile(r"§\s*34\s*(?:Abs\.?\s*\d+\s*)?EStG", re.IGNORECASE),
+    "§7g EStG": re.compile(r"§\s*7g\s*EStG", re.IGNORECASE),
+    "§6b EStG": re.compile(r"§\s*6b\s*EStG", re.IGNORECASE),
+    "§15a EStG": re.compile(r"§\s*15a\s*EStG", re.IGNORECASE),
+    "Veräußerungsgewinn": re.compile(r"\bver[äa]u[ßs]erungsgewinn\b", re.IGNORECASE),
+    "IAB §7g": re.compile(r"\binvestitionsabzugsbetrag\b", re.IGNORECASE),
+    "Reinvest §6b": re.compile(r"\breinvestitionsr[üu]cklage\b", re.IGNORECASE),
+}
 _YEAR_PATTERN = re.compile(r"\b(20\d{2})\b")
 
 
@@ -74,6 +111,66 @@ def extract_balance_sum_from_ja_text(text: str) -> float | None:
             if val and val > 0:
                 return val
     return None
+
+
+def _detect_unit_multiplier(text: str, match_start: int) -> float:
+    """Erkennt 'TEUR' / 'Mio' / 'Mrd' im 40-Zeichen-Umfeld → Multiplier."""
+    window = text[max(0, match_start):match_start + 200].lower()
+    if "mrd" in window:
+        return 1_000_000_000.0
+    if "mio" in window:
+        return 1_000_000.0
+    if "teur" in window or "in tausend" in window or "(t€)" in window:
+        return 1_000.0
+    return 1.0
+
+
+def extract_liquid_assets_from_ja_text(text: str) -> float | None:
+    """Phase 6.5-F1: Extrahiere liquide Mittel (Kasse + Bank)."""
+    for pattern in _LIQUID_ASSETS_PATTERNS:
+        m = pattern.search(text)
+        if m:
+            val = _parse_euro_value(m.group(1))
+            if val is None:
+                continue
+            mult = _detect_unit_multiplier(text, m.start())
+            return val * mult
+    return None
+
+
+def extract_operating_cashflow_from_ja_text(text: str) -> float | None:
+    """Phase 6.5-F1: Extrahiere Cashflow aus laufender Geschäftstätigkeit."""
+    for pattern in _OPERATING_CASHFLOW_PATTERNS:
+        m = pattern.search(text)
+        if m:
+            val = _parse_euro_value(m.group(1))
+            if val is None:
+                continue
+            mult = _detect_unit_multiplier(text, m.start())
+            return val * mult
+    return None
+
+
+def extract_profit_from_ja_text(text: str) -> float | None:
+    """Phase 6.5-F1: Extrahiere Jahresüberschuss/Bilanzgewinn."""
+    for pattern in _PROFIT_PATTERNS:
+        m = pattern.search(text)
+        if m:
+            val = _parse_euro_value(m.group(1))
+            if val is None:
+                continue
+            # Bilanzverlust / Jahresfehlbetrag → negativ (matched-Wort selbst inspect)
+            matched = m.group(0).lower()
+            if "fehlbetrag" in matched or "bilanzverlust" in matched:
+                val = -abs(val)
+            mult = _detect_unit_multiplier(text, m.start())
+            return val * mult
+    return None
+
+
+def extract_paragraph_matches(text: str) -> list[str]:
+    """Phase 6.5-F3: Welche §-Trigger-Paragrafen erscheinen im JA-Text?"""
+    return [label for label, pat in _PARAGRAPH_PATTERNS.items() if pat.search(text)]
 
 
 def extract_ja_year(text: str) -> int | None:
@@ -224,6 +321,11 @@ async def fetch_company_enrichment(
         equity = extract_equity_from_ja_text(detail_text)
         balance = extract_balance_sum_from_ja_text(detail_text)
         year = extract_ja_year(detail_text)
+        # Phase 6.5-F1 + F3
+        liquid = extract_liquid_assets_from_ja_text(detail_text)
+        cashflow = extract_operating_cashflow_from_ja_text(detail_text)
+        profit = extract_profit_from_ja_text(detail_text)
+        para_hits = extract_paragraph_matches(detail_text)
 
         nm_lower = company_name.lower()
         return CompanyEnrichment(
@@ -231,6 +333,11 @@ async def fetch_company_enrichment(
             last_ja_year=year,
             equity_eur=equity,
             balance_sum_eur=balance,
+            liquid_assets_eur=liquid,
+            operating_cashflow_eur=cashflow,
+            profit_eur=profit,
+            has_paragraph_match=bool(para_hits),
+            paragraph_matches=para_hits,
             has_holding_in_name="holding" in nm_lower,
             has_vermoegen_in_name=("vermögen" in nm_lower or "vermogen" in nm_lower),
             has_family_office_hint=(

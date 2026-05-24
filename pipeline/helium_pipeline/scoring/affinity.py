@@ -99,6 +99,9 @@ AFFINITY_CATEGORIES: dict[str, dict] = {
         ],
     },
 }
+# F3 §-Trigger-Match siehe bayes._collect_evidence — wird via
+# CompanyEnrichment.has_paragraph_match aus dem Crawler eingehängt
+# (Single-Source-of-Truth, kein Doppelcount mit affinity).
 
 # Bonus-LR für Bundesanzeiger-JA-Volltext-Treffer (echter Geschäftstätigkeitsbericht)
 JA_TEXT_BONUS_LR = 1.5  # multipliziert den Category-LR (z.B. helium 30 → 45 bei JA-Hit)
@@ -260,12 +263,15 @@ def is_t1_gold(posterior: float, lrs: dict[str, float]) -> tuple[bool, str | Non
     if posterior >= T1_GOLD_POSTERIOR_THRESHOLD:
         return (True, "high_posterior")
 
-    # Pfad 3: ≥2 distinct affinity categories (excluding watchlist which already counted above)
+    # Pfad 3: ≥2 distinct affinity categories
+    # §-Match aus Bayes-Bridge (tax_paragraph_match_ja) zählt mit als Kategorie.
     distinct_cats = {
         k.replace("affinity_", "").replace("_ja_verified", "")
         for k in lrs
         if k.startswith("affinity_") and not k.startswith("affinity_watchlist_")
     }
+    if "tax_paragraph_match_ja" in lrs:
+        distinct_cats.add("tax_paragraph_match")
     if len(distinct_cats) >= 2:
         return (True, f"multi_category_{len(distinct_cats)}")
 

@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Phone, Clock, FileText, AlertTriangle, Ban } from "lucide-react";
+import { ArrowLeft, Clock, FileText, AlertTriangle } from "lucide-react";
 
 import { fetchLeadById, fetchActivities } from "@/lib/db/queries";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { formatRelative } from "@/lib/utils";
 import { LeadStatusPipeline } from "@/components/leads/lead-status-pipeline";
 import { LeadNotes } from "@/components/leads/lead-notes";
 import { LeadDossier } from "@/components/leads/lead-dossier";
 import { LeadDangerActions } from "@/components/leads/lead-danger-actions";
 import { LeadRating } from "@/components/leads/lead-rating";
+import { LeadContactChannels } from "@/components/leads/lead-contact-channels";
 
 export const dynamic = "force-dynamic";
 
@@ -94,40 +94,21 @@ export default async function LeadDetailPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* Phone + Best-call */}
+          {/* Multi-Channel-Dossier + Best-call */}
           <Card className="p-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] mb-1">
-                  Telefon
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="size-4 text-[var(--muted-foreground)]" />
-                  {lead.phone ? (
-                    <a
-                      href={`tel:${lead.phone.replace(/[^+\d]/g, "")}`}
-                      className="text-sm font-medium hover:text-[var(--primary)] transition-colors tabular-nums"
-                    >
-                      {lead.phone}
-                    </a>
-                  ) : (
-                    <span className="text-sm text-[var(--muted-foreground)]">
-                      nicht gefunden — Closer-Recherche nötig
-                    </span>
-                  )}
-                </div>
-                {lead.phone_source && (
-                  <p className="text-[10px] text-[var(--muted-foreground)] mt-1 truncate">
-                    Quelle: {lead.phone_source}
-                  </p>
-                )}
-              </div>
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6">
+              <LeadContactChannels
+                channels={lead.contact_channels || []}
+                fallbackPhone={lead.phone}
+                fallbackPhoneSource={lead.phone_source}
+                fallbackEmail={lead.email}
+              />
+              <div className="md:border-l md:border-[var(--border)] md:pl-6">
                 <div className="text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] mb-1">
                   Beste Anrufzeit
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="size-4 text-[var(--muted-foreground)]" />
+                <div className="flex items-start gap-2">
+                  <Clock className="size-4 text-[var(--muted-foreground)] mt-0.5 shrink-0" />
                   <span className="text-sm">{lead.best_call_window || "—"}</span>
                 </div>
               </div>

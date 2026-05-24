@@ -149,10 +149,13 @@ create table leads (
     person_last_name   text not null,
     person_role        text,                   -- 'Geschäftsführer', 'Gesellschafter' etc.
     person_appointed_at date,                  -- Datum der Bestellung lt. HR
-    -- Kontakt
+    -- Kontakt (legacy single-value für Backwards-Compat)
     phone              text,
     phone_source       text,                   -- 'firmen-impressum', 'hr-eintrag', 'manual'
     email              text,
+    -- Phase 6.5: Multi-Channel-Dossier — Array von Kontakt-Optionen, sortiert nach confidence
+    -- [{channel, value, source, confidence, notes}, ...]
+    contact_channels   jsonb not null default '[]'::jsonb,
     -- Trigger-Metadata
     trigger_type       bekanntmachung_type not null,
     trigger_date       date not null,

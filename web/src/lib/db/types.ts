@@ -26,6 +26,22 @@ export type BekanntmachungType =
 
 export type UserRole = "admin" | "closer";
 
+export type ContactChannelKind =
+  | "phone"
+  | "mobile"
+  | "email"
+  | "linkedin"
+  | "xing"
+  | "website";
+
+export type ContactChannel = {
+  channel: ContactChannelKind;
+  value: string;
+  source: string;
+  confidence: number;
+  notes?: string | null;
+};
+
 export type CountryCode = "DE" | "AT" | "CH";
 
 export type ActivityType =
@@ -89,6 +105,7 @@ export type Lead = {
   phone: string | null;
   phone_source: string | null;
   email: string | null;
+  contact_channels: ContactChannel[];
   trigger_type: BekanntmachungType;
   trigger_date: string;
   trigger_summary: string;

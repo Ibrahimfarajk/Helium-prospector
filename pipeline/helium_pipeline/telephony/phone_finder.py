@@ -214,3 +214,149 @@ async def find_phone(
             continue
 
     return PhoneResult(phone=None, source=None, website=domain)
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Phase 6.5: Multi-Channel-Extraction
+# ───────────────────────────────────────────────────────────────────────────
+
+
+_EMAIL_PATTERN = re.compile(
+    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
+)
+_LINKEDIN_PATTERN = re.compile(
+    r"https?://(?:www\.|de\.)?linkedin\.com/(?:in|company)/[\w\-_%]+",
+    re.IGNORECASE,
+)
+_XING_PATTERN = re.compile(
+    r"https?://(?:www\.)?xing\.com/(?:profile|companies)/[\w\-_%]+",
+    re.IGNORECASE,
+)
+
+# Generic Inbox-Patterns absteigend nach "Persönlichkeits-Wert"
+_GENERIC_EMAIL_TOKENS = ("info@", "kontakt@", "office@", "kanzlei@", "service@", "mail@", "buero@")
+
+
+def extract_contact_channels_from_html(
+    *, html: str, source_label: str, base_confidence: float = 0.7
+) -> list:
+    """Extrahiere phone + email + linkedin + xing aus einem Impressum/Kontakt-HTML.
+
+    Returns list[ContactChannel].
+    """
+    from ..models import ContactChannel
+
+    text = HTMLParser(html).text(separator="\n")
+    channels: list = []
+
+    # Phones (mehrere möglich: Zentrale + Mobile)
+    seen_phones: set[str] = set()
+    for m in _PHONE_PATTERN.finditer(text):
+        raw = m.group(0)
+        norm = normalize_phone(raw)
+        if norm in seen_phones:
+            continue
+        seen_phones.add(norm)
+        if is_service_number(norm):
+            continue
+        digit_only = re.sub(r"[^\d]", "", norm)
+        if len(digit_only) < 9:
+            continue
+        # Mobile-Heuristik: 015x/016x/017x → mobile, sonst phone
+        is_mobile = bool(re.match(r"\+?49?\s?0?1[567]", norm))
+        channels.append(ContactChannel(
+            channel="mobile" if is_mobile else "phone",
+            value=norm,
+            source=source_label,
+            confidence=base_confidence + (0.1 if is_mobile else 0),
+        ))
+
+    # Emails — generic-Inboxen niedrigere Confidence
+    seen_emails: set[str] = set()
+    for m in _EMAIL_PATTERN.finditer(text):
+        em = m.group(0).lower()
+        if em in seen_emails:
+            continue
+        seen_emails.add(em)
+        is_generic = any(em.startswith(t) for t in _GENERIC_EMAIL_TOKENS)
+        channels.append(ContactChannel(
+            channel="email",
+            value=em,
+            source=source_label,
+            confidence=base_confidence - 0.2 if is_generic else base_confidence,
+            notes="generic inbox" if is_generic else None,
+        ))
+
+    # LinkedIn / Xing nur im HTML matchen, nicht im text (URLs überleben Text-Strip oft nicht)
+    for url in _LINKEDIN_PATTERN.findall(html):
+        channels.append(ContactChannel(
+            channel="linkedin", value=url, source=source_label, confidence=0.4,
+        ))
+    for url in _XING_PATTERN.findall(html):
+        channels.append(ContactChannel(
+            channel="xing", value=url, source=source_label, confidence=0.4,
+        ))
+
+    return channels
+
+
+async def find_all_contact_channels(
+    *,
+    company_name: str,
+    city: str | None,
+    client: httpx.AsyncClient,
+) -> list:
+    """Phase 6.5: Multi-Channel-Lookup. Returns list[ContactChannel] sortiert by confidence DESC.
+
+    Scrapes /impressum + /kontakt der Firmen-Domain → extrahiert alle gefundenen Channels.
+    """
+    domain = await find_company_domain(
+        company_name=company_name, city=city, client=client
+    )
+    if not domain:
+        return []
+
+    all_channels = []
+    visited_paths: set[str] = set()
+    for path in ("/impressum", "/kontakt", "/imprint", "/legal-notice", "/"):
+        if path in visited_paths:
+            continue
+        visited_paths.add(path)
+        url = f"https://{domain}{path}"
+        try:
+            resp = await client.get(url, timeout=10.0, follow_redirects=True)
+            if resp.status_code != 200:
+                continue
+            channels = extract_contact_channels_from_html(
+                html=resp.text,
+                source_label=f"impressum:{domain}{path}",
+                base_confidence=0.85 if path in ("/impressum", "/imprint") else 0.65,
+            )
+            all_channels.extend(channels)
+        except httpx.HTTPError:
+            continue
+
+    # Add Website-Domain als eigenen Channel
+    if domain:
+        from ..models import ContactChannel
+        all_channels.append(ContactChannel(
+            channel="website",
+            value=f"https://{domain}",
+            source="ddg-domain-lookup",
+            confidence=0.6,
+        ))
+
+    # Dedup by (channel, value)
+    seen: set[tuple[str, str]] = set()
+    deduped = []
+    for c in all_channels:
+        key = (c.channel, c.value.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(c)
+
+    # Sort: confidence DESC, dann channel-priority (phone > mobile > email > linkedin > xing > website)
+    priority = {"phone": 5, "mobile": 4, "email": 3, "linkedin": 2, "xing": 1, "website": 0}
+    deduped.sort(key=lambda c: (-c.confidence, -priority.get(c.channel, 0)))
+    return deduped

@@ -79,10 +79,26 @@ LR_TABLE: dict[str, float] = {
     "trigger_new_registration_holding": 15.0,
     "trigger_capital_increase": 4.0,
     "trigger_q3_q4_praxisverkauf": 8.0,
-    # Vermögen
+    # Vermögen (Bilanz-Eigenkapital)
     "ek_ge_500k": 3.0,
     "ek_ge_2m": 8.0,
     "ek_ge_10m": 15.0,
+    # Phase 6.5-F1: Cashflow-Indikator (echte Liquidität, nicht nur EK-Buchwert)
+    "liquid_assets_ge_500k": 4.0,
+    "liquid_assets_ge_1m": 8.0,
+    "liquid_assets_ge_5m": 15.0,
+    "operating_cashflow_ge_200k": 3.0,
+    "operating_cashflow_ge_500k": 6.0,
+    "operating_cashflow_ge_1m": 10.0,
+    "profit_ge_200k": 2.5,
+    "profit_ge_500k": 5.0,
+    "profit_ge_1m": 8.0,
+    "cashflow_negative": 0.5,  # Penalty — Firma verbrennt Cash
+    # Phase 6.5-F3: §-Trigger im JA-Volltext (Single-Source via Enrichment)
+    "tax_paragraph_match_ja": 25.0,
+    # Phase 6.5-F2: Konzern-Cross-Ref (Serien-Unternehmer)
+    "wphg_voting_rights_3plus": 8.0,
+    "wphg_voting_rights_5plus": 15.0,
     # Persona-Hinweise aus Firmenname / Stammdaten
     "name_contains_beteiligung": 3.0,
     "name_contains_vermoegen": 4.0,
@@ -237,6 +253,48 @@ def _collect_evidence(inp: ScoringInput) -> dict[str, float]:
             )
         if e.has_us_business_hint:
             lrs["us_business_hint"] = LR_TABLE["us_business_hint"]
+
+        # Phase 6.5-F1: Cashflow-Indikatoren — höchster Tier wird genommen
+        if e.liquid_assets_eur:
+            la = e.liquid_assets_eur
+            if la >= 5_000_000:
+                lrs["liquid_assets_ge_5m"] = LR_TABLE["liquid_assets_ge_5m"]
+            elif la >= 1_000_000:
+                lrs["liquid_assets_ge_1m"] = LR_TABLE["liquid_assets_ge_1m"]
+            elif la >= 500_000:
+                lrs["liquid_assets_ge_500k"] = LR_TABLE["liquid_assets_ge_500k"]
+
+        if e.operating_cashflow_eur is not None:
+            cf = e.operating_cashflow_eur
+            if cf < 0:
+                lrs["cashflow_negative"] = LR_TABLE["cashflow_negative"]
+            elif cf >= 1_000_000:
+                lrs["operating_cashflow_ge_1m"] = LR_TABLE["operating_cashflow_ge_1m"]
+            elif cf >= 500_000:
+                lrs["operating_cashflow_ge_500k"] = LR_TABLE["operating_cashflow_ge_500k"]
+            elif cf >= 200_000:
+                lrs["operating_cashflow_ge_200k"] = LR_TABLE["operating_cashflow_ge_200k"]
+
+        if e.profit_eur is not None and e.profit_eur > 0:
+            pr = e.profit_eur
+            if pr >= 1_000_000:
+                lrs["profit_ge_1m"] = LR_TABLE["profit_ge_1m"]
+            elif pr >= 500_000:
+                lrs["profit_ge_500k"] = LR_TABLE["profit_ge_500k"]
+            elif pr >= 200_000:
+                lrs["profit_ge_200k"] = LR_TABLE["profit_ge_200k"]
+
+        # Phase 6.5-F3: §-Paragraph-Match im JA-Volltext
+        if e.has_paragraph_match:
+            lrs["tax_paragraph_match_ja"] = LR_TABLE["tax_paragraph_match_ja"]
+
+        # Phase 6.5-F2: WpHG-Konzern-Cross-Ref (Serien-Unternehmer)
+        if e.wphg_voting_rights_count is not None:
+            n = e.wphg_voting_rights_count
+            if n >= 5:
+                lrs["wphg_voting_rights_5plus"] = LR_TABLE["wphg_voting_rights_5plus"]
+            elif n >= 3:
+                lrs["wphg_voting_rights_3plus"] = LR_TABLE["wphg_voting_rights_3plus"]
 
     # ─── Affinity-Signals (Phase 6.1) ─────────────────────────────────
     # Pattern-Match + Watch-List + (optional) JA-Volltext-Scan

@@ -96,6 +96,25 @@ class CompanyEnrichment(BaseModel):
     has_vermoegen_in_name: bool = False
     has_family_office_hint: bool = False
     has_us_business_hint: bool = False
+    # Phase-6.5-F1: BA-Cashflow-Indikator
+    liquid_assets_eur: float | None = None  # Kassenbestand + Bankguthaben
+    operating_cashflow_eur: float | None = None  # Cashflow lfd. Geschäftstätigkeit
+    profit_eur: float | None = None  # Jahresüberschuss / Bilanzgewinn
+    has_paragraph_match: bool = False  # §16/§34/§7g/§6b/§15a EStG im JA
+    paragraph_matches: list[str] = Field(default_factory=list)  # gefundene §-Paragrafen
+    # Phase-6.5-F2: Konzern-Cross-Ref
+    wphg_voting_rights_count: int | None = None  # Anzahl Stimmrechts-Beteiligungen >=3%
+    wphg_companies: list[str] = Field(default_factory=list)  # Firmennamen der Beteiligungen
+
+
+class ContactChannel(BaseModel):
+    """Ein einzelner Kontakt-Kanal mit Confidence (Phase 6.5)."""
+
+    channel: str  # 'phone' | 'mobile' | 'email' | 'linkedin' | 'xing' | 'website'
+    value: str
+    source: str  # 'firmen-impressum:domain.de/impressum' | 'hr-eintrag' | 'manual' | 'persondossier'
+    confidence: float = 0.5  # 0..1 — 1 = sicher, 0 = nur Vermutung
+    notes: str | None = None
 
 
 class PersonInfo(BaseModel):
@@ -136,10 +155,12 @@ class Lead(BaseModel):
     person_role: str | None = None
     person_appointed_at: date | None = None
 
-    # Kontakt
+    # Kontakt — legacy single-Value (für Backwards-Compat in DB+UI)
     phone: str | None = None
     phone_source: str | None = None
     email: str | None = None
+    # Phase 6.5: Multi-Channel-Array, sortiert by confidence DESC
+    contact_channels: list[ContactChannel] = Field(default_factory=list)
 
     # Trigger
     trigger_type: BekanntmachungType

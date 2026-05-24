@@ -263,6 +263,17 @@ function mkLead(p: {
     phone: p.phone,
     phone_source: p.phone_source,
     email: null,
+    contact_channels: p.phone
+      ? [
+          {
+            channel: "phone",
+            value: p.phone,
+            source: p.phone_source ?? "demo",
+            confidence: 0.75,
+            notes: null,
+          },
+        ]
+      : [],
     trigger_type: p.trigger_type,
     trigger_date: p.trigger_date,
     trigger_summary: p.summary,
