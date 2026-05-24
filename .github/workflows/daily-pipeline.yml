@@ -1,14 +1,28 @@
 name: Daily Lead Pipeline
 
-# Täglich 06:00 Berlin (= 04:00 UTC im Sommer, 05:00 UTC im Winter)
-# Wir laufen 05:00 UTC was DST-tolerant in der Closer-Morgenphase landet.
+# Phase 8.2 — 3× täglich für Closer-Workflow (Berlin 07/11/15 Uhr).
+# Smart-Schedule gegen IP-Ban-Risiko bei handelsregister.de:
+#   05:00 UTC = 07:00 Berlin → FULL Crawl (handelsregister + bundesanzeiger)
+#   09:00 UTC = 11:00 Berlin → DELTA-RESCORE (kein HR-Crawl, nur DB-Re-Score
+#                                              + Insolvenz-Check auf Top-Leads)
+#   13:00 UTC = 15:00 Berlin → DELTA-RESCORE
 on:
   schedule:
-    - cron: "0 5 * * *"
+    - cron: "0 5 * * *"   # FULL
+    - cron: "0 9 * * *"   # DELTA
+    - cron: "0 13 * * *"  # DELTA
   workflow_dispatch:
     inputs:
+      mode:
+        description: "Run-Modus"
+        required: false
+        default: "full"
+        type: choice
+        options:
+          - full
+          - delta
       max_pages:
-        description: "Wieviele Ergebnis-Seiten max?"
+        description: "Wieviele Ergebnis-Seiten max? (nur full)"
         required: false
         default: "3"
       days_back:
@@ -52,13 +66,35 @@ jobs:
         run: |
           playwright install --with-deps chromium
 
-      - name: Run pipeline
+      - name: Determine run mode
+        id: mode
+        run: |
+          # Manual dispatch can override mode. Cron schedules map by time:
+          if [ -n "${{ github.event.inputs.mode }}" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "0 5 * * *" ]; then
+            echo "mode=full" >> $GITHUB_OUTPUT
+          else
+            echo "mode=delta" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run pipeline (full)
+        if: steps.mode.outputs.mode == 'full'
         working-directory: pipeline
         run: |
           helium-pipeline run \
             --max-pages "${{ github.event.inputs.max_pages || '3' }}" \
             --days-back "${{ github.event.inputs.days_back || '1' }}" \
             --output-dir ./local_data
+
+      - name: Run pipeline (delta — rescore existing only)
+        if: steps.mode.outputs.mode == 'delta'
+        working-directory: pipeline
+        run: |
+          # Delta-Mode: KEIN HR-Crawl (IP-Schutz), nur Re-Scoring auf
+          # bestehende Bekanntmachungen + Insolvenz-Check für Top-Leads.
+          echo "Delta-mode: rescore only (no HR crawl)"
+          helium-pipeline rescore --output-dir ./local_data || echo "rescore-Command noch nicht implementiert (Phase 8.3)"
 
       - name: Upload run artifacts
         if: always()

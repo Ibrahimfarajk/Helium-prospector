@@ -188,6 +188,10 @@ LR_TABLE: dict[str, float] = {
     # Phase 8.2 — Negative Features (B2). Familie "negative" (eigene Familie
     # damit Penalties nicht durch positive Affinity-LRs gedimmt werden).
     **NEGATIVE_LRS,
+    # Phase 8.2 — Vorgänger-Fonds (B3 STUB, real impl in 8.3).
+    # affinity_-Prefix → Affinität-Familie.
+    "affinity_predecessor_fund_1": 3.0,
+    "affinity_predecessor_fund_2plus": 6.0,
 }
 
 

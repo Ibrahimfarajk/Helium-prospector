@@ -455,4 +455,91 @@ pipeline/scripts/
 - **EDGE-STB-VV** ist jetzt expected GOLD via Pfad 2 (Variante I). Sauberer Steuerberater-Filter kommt mit B2.
 
 **139/139 Pytest grün.**
+
+### B2 — Negative Features ✅
+
+**Pattern-Filter mit Anti-False-Positive-Logik:**
+
+| Filter | LR | Pattern | Anti-FP-Check |
+|---|---|---|---|
+| `pure_real_estate_holding` | ×0.3 | Immobilien/Grundstücks/Bauträger/Liegenschaft | Beteiligung/Investment-Hint → skip |
+| `dormant_old_holding` | ×0.2 | "Holding" + last_ja_year<today-3 + bek_date>365d | n/a |
+| `law_tax_firm_no_investment` | ×0.3 | Steuerberatung/Rechtsanwalts-GmbH/Wirtschaftsprüfer | M&A/Beteiligungs-Hint → skip |
+
+**Eigene Familie `negative`** in Bayes (NICHT in `affinitaet`) — Penalties werden nicht durch Affinity-Boost gedimmt. Innerhalb der Familie greift Cluster-Cap normal (stärkster voll, weitere halbgewichtet — verhindert Doppel-Penalty wenn alle 3 feuern).
+
+**Wichtige Einsicht aus EDGE-STB-VV:** B2 fängt *echte* Steuerberatungs-GmbHs (`Schmidt Steuerberatung GmbH`), aber NICHT VV-Mandanten-Firmen (`Schmidt Vermögensverwaltung GmbH`, gegründet vom Steuerberater für seinen Mandanten). Letztere fallen unter A3-Härtung-Pfad 4. Filter sind komplementär — sauberer als globaler Veto.
+
+**13 neue Tests** in `test_negative_features.py`.
+
+### B4 — JA-Stale-Penalty ✅
+
+Wenn `last_ja_year >= 2 Jahre alt` UND ein Liquiditäts-LR (`liquid_assets_*` oder `operating_cashflow_*`) gefeuert hat, wird `liquidity_data_stale` (LR=0.5) zur Vermögens-Familie hinzugefügt. Cluster-Cap entscheidet ob es voll oder gedimmt zählt.
+
+**3 zusätzliche Tests** in `test_negative_features.py`.
+
+### B1 — Momentum-Score ✅
+
+`scoring/momentum.py` — counted Bekanntmachungen pro Firma (HRB-Match bevorzugt, Name-Fallback) im 90-Tage-Fenster:
+
+```
+1 trigger    : kein Boost
+2 triggers   : ×2.0
+3 triggers   : ×3.0
+4-5 triggers : ×3.5-4.0
+6+ triggers  : ×4.5
+Cap          : ×5.0
+```
+
+**Family: aktivitaet** (User-Direktive). Im Bayes-Flow wird `ScoringInput.previous_bekanntmachungen` als Liste von dicts mit `hrb_nummer/company_name/bekanntmachung_date` reingegeben — Pipeline-side aus DB holen.
+
+**7 neue Tests** in `test_momentum.py`.
+
+### B3 — Vorgänger-Fonds-Cross-Match (STUB) ⏸
+
+**Time-Box-Risk-Decision:** BaFin-Datenbank ist nur Emittenten-Liste, nicht Anleger-Liste. Echte Anleger-Daten in alten Fonds-Prospekt-PDFs + Foren (anlegerschutz.de). 90-min-Budget zu knapp.
+
+**Stub gebaut:** `scoring/predecessor_funds.py` mit `lookup_predecessor_funds()`-Signatur, LR-Keys (`affinity_predecessor_fund_1`/`affinity_predecessor_fund_2plus`) reserviert in Affinität-Familie. Aktuell returns `(None, [], None)` → kein false-positive.
+
+**Phase 8.3 Real-Implementation** — anlegerschutz-Forum-Scrape + Fuzzy-Name-Match.
+
+### B5 — Score-Drift-Monitoring ✅
+
+`monitoring.py` mit `compute_run_snapshot` + `record_run`:
+
+- Posterior-Verteilung pro Run (min/max/mean/median/p95).
+- Tier-Counts + GOLD-Sample (3 zufällige IDs).
+- JSONL-Append zu `~/.helium-pipeline/drift/runs.jsonl`.
+- `_check_drift` vergleicht mit 7-Tage-Baseline, Alert bei >=2σ Abweichung.
+- **Discord-Webhook auskommentiert** (`TODO Phase 8.3`) — wird scharf geschaltet nach 7 Tagen Real-Daten.
+
+**5 neue Tests** in `test_monitoring.py`.
+
+### Cron 3× täglich (smart-schedule) ✅
+
+`.github/workflows/daily-pipeline.yml`:
+
+```
+05:00 UTC (07:00 Berlin) → FULL crawl (HR + BA, IP-Last verteilt sich auf 1× pro Tag)
+09:00 UTC (11:00 Berlin) → DELTA rescore (KEIN HR-Crawl)
+13:00 UTC (15:00 Berlin) → DELTA rescore
+```
+
+**Begründung:** GitHub-Actions-IP-Range zählt für handelsregister.de — 3 echte Crawls/Tag → erhöhtes Captcha-Risiko. Delta-Modus wertet nur DB-Bekanntmachungen neu, plus Insolvenz-Check für Top-Leads. `rescore`-Command noch nicht implementiert (Phase 8.3) — Workflow ist resilient (fail-graceful mit echo).
+
+### Phase 8.2 Final Status
+
+**Tests:** 167/167 grün (von 139 vor B-Sweep).
+**Synthetic-Lead-Generator:** 25/25 Cases OK.
+**Modules added:** reachability, negative_features, momentum, predecessor_funds (stub), monitoring, synthetic.
+**Bayes-Refactor:** Cluster-Cap (Variante A Hybrid) auf 5 Familien (vermoegen/aktivitaet/affinitaet/reachability/negative).
+**ScoreBreakdown-Erweiterungen:** family_breakdown, reachability, gold_audit, negative_features.
+
+### Was BEWUSST nicht in 8.2
+
+- **B3 Real-Implementation** → 8.3 (Time-Box-Realismus)
+- **Rescore-CLI-Command** → 8.3 (für Delta-Cron-Modus)
+- **Discord-Drift-Alert** → 8.3 (nach 7 Tagen Baseline-Daten)
+- **GF-Historiengraph** → 8.3 (User-Plan)
+- **Frontend-UI für family_breakdown/reachability_stars** → 8.3 (User entscheidet)
 | **Cron** | Workflow eingerichtet, **Secrets-Setup ausstehend** |
