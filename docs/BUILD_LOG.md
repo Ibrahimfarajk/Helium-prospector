@@ -336,4 +336,40 @@ pipeline/scripts/
 | **Repo** | https://github.com/Ibrahimfarajk/Helium-prospector — main @ 5a80524 |
 | **Tests** | Python 12/12, E2E 25/28 (selektor-Test-Bugs ignoriert) |
 | **Bundle** | Next.js Build 3 s, <200 KB First-Load |
+
+---
+
+## Phase 6.5 — Anti-Filter + F-Pack + Multi-Channel-Dossier (2026-05-23)
+
+**Pipeline:** Block 1 (Liquidation/Mailbox/Größe) → Block 2 (BaFin/OffeneRegister/Online/Insolvency) → F-Pack (BA-Cashflow F1, WpHG-Serial F2, §-EStG-Volltext F3) → Multi-Channel-Dossier-Schema.
+
+- 8 neue Module unter `pipeline/helium_pipeline/scoring/`.
+- `CompanyEnrichment` erweitert um `liquid_assets_eur`, `operating_cashflow_eur`, `profit_eur`, `paragraph_matches`, `wphg_voting_rights_count`.
+- `phone_finder.extract_contact_channels_from_html` + `find_all_contact_channels` — multi-channel mit Confidence pro Kanal.
+- Frontend: `lead-contact-channels.tsx` mit Tastatur-Shortcuts 1·2·3.
+- DB-Migration `2026-05-23_phase65_contact_channels.sql` → `leads.contact_channels jsonb` + GIN-Index.
+- **Tests 12 → 101** (Affinity 22 + Anti-Filters 29 + Block2 10 + F-Pack 21 + Channels 7).
+
+## Phase 7 — Audit & Hardening (2026-05-24)
+
+| Box | Status | Ergebnis |
+|---|---|---|
+| 1 | ✅ | Tag `pre-phase7-audit`, Baseline-File |
+| 9 | ✅ | Vercel live, RLS aktiv (anon sieht 0/13 leads), Cron wartet auf erste Ausführung |
+| 6 | ✅ | Input-Length-Limits auf Server-Actions, Audit-Log type-safe |
+| 2 | ✅ | 11/13 Leads mit `contact_channels` backfilled (2 ohne legacy-Phone) |
+| 3+5+8 | ✅ | 4 Bugs gefixt (Hoisting, setState-in-Effect, Quote, Dead-Code), ESLint 13→0, 5 unused imports, a11y |
+| 4 | ✅ | **52× Speedup** auf Hot-Path (Mailbox-Cluster-Cores pre-cached, 6572ms → 126ms / 1000 Leads) |
+| 7+10 | ✅ | UX-Findings P0/P1/P2 dokumentiert, CLOSER_GUIDE + ADMIN_GUIDE neu |
+| 11 | ⏳ | Live-Pipeline-Trigger folgt |
+
+### Aktueller Live-Stand (Phase 7, 2026-05-24)
+
+| | |
+|---|---|
+| **App** | https://helium-prospector.vercel.app — 200 OK, fra1, HSTS preload |
+| **DB** | 5 profiles, 13 leads (11 mit contact_channels), 30 bekanntmachungen, 2 crawl_runs |
+| **Tests** | 101/101 Python grün, TypeScript+ESLint 0 errors |
+| **Performance** | Bayes 1000-Lead-Score: 126ms (war 6572ms) |
+| **Cron** | Daily 05:00 UTC, erste Ausführung 2026-05-25 |
 | **Cron** | Workflow eingerichtet, **Secrets-Setup ausstehend** |
