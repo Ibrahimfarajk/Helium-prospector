@@ -1,0 +1,21 @@
+import { chromium } from "playwright";
+const browser = await chromium.launch({ headless: true });
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "dark" });
+const page = await ctx.newPage();
+const MAGIC = process.argv[2];
+const BASE = "https://helium-prospector.vercel.app";
+await page.goto(MAGIC, { waitUntil: "networkidle" });
+await page.waitForTimeout(2500);
+await page.goto(`${BASE}/leads?sort=gold`, { waitUntil: "networkidle" });
+await page.waitForTimeout(1500);
+await page.screenshot({ path: "./screenshots/qa/GOLD-01-leads.png" });
+await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+await page.waitForTimeout(1200);
+await page.screenshot({ path: "./screenshots/qa/GOLD-02-dashboard.png" });
+// open the gold lead
+const goldHref = await page.locator('a[href^="/leads/"]').first().getAttribute("href");
+await page.goto(`${BASE}${goldHref}`, { waitUntil: "networkidle" });
+await page.waitForTimeout(1200);
+await page.screenshot({ path: "./screenshots/qa/GOLD-03-lead-detail.png" });
+console.log("Done");
+await browser.close();

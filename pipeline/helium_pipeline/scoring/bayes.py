@@ -37,6 +37,12 @@ from .affinity import (
     is_anti_persona_watch_match,
     is_t1_gold,
 )
+from .anti_filters import (
+    AntiFilterResult,
+    address_contains_mailbox_provider,
+    is_liquidation_company,
+    is_sweet_spot_size,
+)
 
 # ───────────────────────────────────────────────────────────────────────────
 # Konstanten — alles zentral, leicht anpassbar nach Closer-Feedback
@@ -125,6 +131,24 @@ def _check_hard_gates(inp: ScoringInput) -> tuple[bool, list[str]]:
         company_name=b.company_name, hrb_nummer=b.hrb_nummer
     ):
         reasons.append("watch_list_anti_persona (Konkurrenz/Issuer)")
+
+    # Gate 4: Liquidation-Suffix (Phase 6.5)
+    if is_liquidation_company(b.company_name):
+        reasons.append("liquidation_suffix")
+
+    # Gate 5: Mailbox-Provider in Adresse (Phase 6.5)
+    address = (b.company_address or "") + " " + (b.company_postal_code or "") + " " + (b.company_city or "")
+    provider = address_contains_mailbox_provider(address)
+    if provider:
+        reasons.append(f"mailbox_provider:{provider}")
+
+    # Gate 6: Sweet-Spot-Size (nur wenn Enrichment-Daten da)
+    if inp.enrichment and (inp.enrichment.balance_sum_eur or inp.enrichment.equity_eur):
+        if not is_sweet_spot_size(
+            balance_sum_eur=inp.enrichment.balance_sum_eur,
+            equity_eur=inp.enrichment.equity_eur,
+        ):
+            reasons.append("size_not_sweet_spot")
 
     return (len(reasons) == 0, reasons)
 
