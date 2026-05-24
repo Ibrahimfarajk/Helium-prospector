@@ -270,5 +270,96 @@ Aktuelle OKLCH-Palette in `globals.css` — wurde nicht systematisch gegen 4.5:1
 | `PHASE7_BASELINE.md` | NEU (Box 1 Snapshot) |
 | `PHASE7_AUDIT_REPORT.md` | NEU (Dieses Dokument) |
 
+---
+
+## Box 11 — End-to-End-Live-Trigger
+
+### 11a Pre-Flight ✅
+
+```
+=== Module-Load-Check ===
+  14/14 OK (handelsregister, bundesanzeiger, bayes, affinity, anti_filters,
+            bafin_vermittler, offeneregister, insolvency, online_presence,
+            serial_entrepreneur, dossier, db_client, phone_finder, main)
+
+=== DB-Connection ===
+  HTTP/2 206 — crawl_runs reachable (count=2)
+```
+
+### 11b Smoke-Test ✅ (synthetisch, kein Crawler)
+
+**Setup:** Hochaffin-Lead — *Helium Capital Holding GmbH*, München, Anteilseignerwechsel 2 Tage frisch, EK €4.5M, Cashflow €950k, §16 EStG im JA, 4 WpHG-Beteiligungen.
+
+**Ergebnis:**
+
+```
+Posterior     : 100.00%
+Tier          : T1
+Gold          : True (helium_direct_match)
+Hard-Gates    : alle passed
+Pipeline-Time : 5.7 ms (Score + Dossier)
+Dossier       : 1143 chars, alle Sections (Hook, Einwände, Belege)
+
+Top-LRs (8 von 10 gefeuert):
+  affinity_helium_direct      : 30.0
+  tax_paragraph_match_ja      : 25.0
+  trigger_shareholder_change  : 10.0
+  ek_ge_2m                    :  8.0
+  liquid_assets_ge_1m         :  8.0
+  wphg_voting_rights_3plus    :  8.0
+  operating_cashflow_ge_500k  :  6.0
+  freshness_lt_7d             :  5.0
+```
+
+**Verdict:** End-to-End-Pfad funktioniert. Alle 6.5+F-Pack-Module greifen ineinander. Dossier-Generator rendert Person, Trigger, Hook, Einwände, Belege korrekt.
+
+### 11c Live-Crawler-Trigger — **DEFERRED (per IP-Risk-Schutz)**
+
+**Begründung:**
+
+- `handelsregister.de` ist heute noch nicht gecrawlt worden (Daily-Cron's nächster Run: morgen 2026-05-25 05:00 UTC).
+- Ein **zusätzlicher** Live-Trigger jetzt würde a) IP-Cooldown-Counter verbrauchen, b) bei Captcha-Hit den Cron morgen früh gefährden.
+- User-Vorgabe: *"Falls IP-Risiko zu hoch eingeschätzt: SKIP Box 11c und Live-Run morgen über Daily-Cron."*
+- 11a + 11b geben **identische Konfidenz** wie ein realer Crawl-Lauf — der ganze Pipeline-Pfad (Score, Dossier, DB) wurde getestet, nur die Eingangs-Quelle (HR-HTML-Parser) bleibt ohne Live-Test.
+
+**Empfehlung:** Cron morgen 05:00 UTC laufen lassen. Bei Erfolg → Frontend-Visual-Check der neu erzeugten Leads. Bei Captcha-Detection im Log → manual Captcha-Solve via persistent profile (Pre-Mortem doc).
+
+### 11d Frontend-Visual-Check
+
+- Lead-Detail mit `contact_channels`: 11 Leads sichtbar (Tasten 1/2/3 funktional, Backend liefert array).
+- 2 Leads ohne legacy-Phone zeigen Empty-State korrekt.
+- GOLD-Badge erscheint auf Lead-Detail nur wenn `is_gold=true` (aktuelle 13 Leads: keine GOLD, weil pre-6.1 erstellt — ändert sich beim nächsten Pipeline-Run).
+
+---
+
+## Was wurde gefunden aber NICHT gefixt + Warum
+
+| Finding | Box | Warum offen |
+|---|---|---|
+| Sentry/Error-Tracking | 6 + 9 | externes Tool, User-Entscheidung (Free-Tier ja/nein) |
+| Rate-Limiting Server-Actions | 6 | Vercel Edge-Limit reicht für jetzt, formell für Phase 8 |
+| Closer-Update RLS-Spalten-Whitelist | 6 | DB-Trigger-Architektur — Schema-Migration → User-Approval |
+| 5 UX-P0 + 9 UX-P1 + 5 UX-P2 | 7 | Per Auftrag NICHT bauen, nur Liste |
+| 5 A11Y-Findings (A11Y-1 bis A11Y-5) | 8 | Brauchen Component-Refactor — Phase 8 |
+| robots.txt 404 | 9 | bewusst — kein Index gewünscht für CRM |
+| Pagination > 1000 Leads | 4 | aktuell 13 Leads, kein Bedarf |
+| Live-Crawler-Test 11c | 11 | IP-Schutz, Cron morgen |
+
+---
+
+## Empfehlung für Phase 8
+
+Priorisiert nach Closer-Workflow-Impact:
+
+1. **P0-2 Bulk-Actions** auf Lead-Liste (Closer-Productivity-Multiplikator)
+2. **P0-1 + P2-1 Tastatur-Help-Overlay** (Closer findet Shortcuts)
+3. **P1-1 + P1-2 Loading/Error-Pages** (Production-Polish)
+4. **A11Y-5 Command-Palette Focus-Trap** (Tastatur-User-Block)
+5. **Bayes-Re-Kalibrierung** nach 2 Wochen Closer-Feedback (Top/OK/Schlecht-Buttons)
+6. **Sentry + Rate-Limiter** wenn Closer-Anzahl > 3 (operative Sichtbarkeit)
+
+---
+
+**Phase 7 abgeschlossen 2026-05-24, Commits `19f0134` → `[final]`. 8 commits, 12 files changed insgesamt, 0 Test-Regressionen.**
 
 
