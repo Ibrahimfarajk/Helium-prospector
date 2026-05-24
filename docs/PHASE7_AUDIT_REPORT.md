@@ -80,4 +80,28 @@ Alle 4 Server-Actions (`updateLeadStatus`, `addNote`, `rateLead`, `markDoNotCont
 - ⚠️ **Kein Rate-Limiting** auf Server-Actions oder API-Routes (`/api/keepalive`). Bei Brute-Force / Spam-Submit kein Throttle. Vercel hat IP-basiertes Edge-Limiting (kostenlos), aber explizite Limits fehlen.
 - ⚠️ **Kein Sentry / kein Error-Tracking** — Server-Action-Errors gehen in Vercel-Logs, sind aber schwer zu durchsuchen.
 
+---
+
+## Box 2 — Backfill 13 Leads ✅
+
+Script: `pipeline/scripts/backfill_contact_channels.py` (idempotent).
+
+### Ergebnis
+
+| Status | Anzahl |
+|---|---|
+| Mit `contact_channels` befüllt | **11** |
+| Kein legacy-Phone/Email, leer gelassen | 2 |
+| Total | 13 |
+
+- Mobile/Phone unterschieden über Regex `01[567]...` (0.75 vs 0.7 confidence).
+- Generic-Inboxen (`info@`, `kontakt@`, …) bekommen 0.5 statt 0.7 (User kann später überschreiben).
+- `source = "legacy_migration"` für saubere Audit-Trail.
+- Die 2 Leads ohne Daten zeigen jetzt im Frontend den Empty-State *"Keine Kontaktdaten gefunden — Closer-Recherche nötig"*.
+
+### Test-Status nach Backfill
+
+101/101 Pipeline-Tests grün (1.12s).
+
+
 
