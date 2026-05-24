@@ -172,7 +172,7 @@ async def run_pipeline(
                         phone_source=phone_result.source,
                         trigger_type=BekanntmachungType(bek.bekanntmachung_type),
                         trigger_date=bek.bekanntmachung_date,
-                        trigger_summary=f"{bek.bekanntmachung_type} HRB {bek.hrb_nummer or '—'}",
+                        trigger_summary=_format_trigger_summary(bek),
                         posterior_score=breakdown.posterior,
                         tier=breakdown.tier,
                         score_breakdown=breakdown.model_dump(),
@@ -307,6 +307,29 @@ def _extract_person(bek) -> PersonInfo:
         )
 
     return PersonInfo(last_name="—", role=_guess_role(text))
+
+
+_TRIGGER_LABELS = {
+    "shareholder_change": "Anteilseignerwechsel",
+    "gf_change": "Geschäftsführerwechsel",
+    "new_registration": "Neueintragung",
+    "capital_increase": "Kapitalerhöhung",
+    "other": "Bekanntmachung",
+}
+
+
+def _format_trigger_summary(bek) -> str:
+    """Schöner Trigger-Summary: `<Datum> — <Typ> im HRB <Nummer> — (<Gericht>)`"""
+    label = _TRIGGER_LABELS.get(str(bek.bekanntmachung_type), "Bekanntmachung")
+    hrb_clean = (bek.hrb_nummer or "—").removeprefix("HRB ").removeprefix("HRB-")
+    parts = [
+        bek.bekanntmachung_date.isoformat(),
+        "—",
+        f"{label} im HRB {hrb_clean}",
+    ]
+    if bek.register_court:
+        parts.append(f"— ({bek.register_court})")
+    return " ".join(parts)
 
 
 def _guess_role(text: str) -> str | None:
