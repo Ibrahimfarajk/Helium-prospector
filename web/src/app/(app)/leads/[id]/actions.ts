@@ -5,6 +5,14 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { LeadStatus } from "@/lib/db/types";
 
+// Input-Limits — schützen gegen DOS via riesige JSONB-Inserts
+const MAX_NOTE_LENGTH = 5_000;
+const MAX_REASON_LENGTH = 500;
+
+function clamp(text: string, max: number): string {
+  return text.length > max ? text.slice(0, max) : text;
+}
+
 export async function updateLeadStatus(leadId: string, status: LeadStatus) {
   const supabase = await createClient();
   const {
@@ -48,7 +56,8 @@ export async function updateLeadStatus(leadId: string, status: LeadStatus) {
 }
 
 export async function addNote(leadId: string, note: string) {
-  if (!note.trim()) return { ok: false, error: "empty" };
+  const trimmed = note.trim();
+  if (!trimmed) return { ok: false, error: "empty" };
   const supabase = await createClient();
   const {
     data: { user },
@@ -59,7 +68,7 @@ export async function addNote(leadId: string, note: string) {
     lead_id: leadId,
     user_id: user.id,
     activity_type: "note_added",
-    note_md: note.trim(),
+    note_md: clamp(trimmed, MAX_NOTE_LENGTH),
   });
 
   revalidatePath(`/leads/${leadId}`);
@@ -105,7 +114,7 @@ export async function markDoNotContact(leadId: string, reason: string) {
   await (supabase.from("leads") as any)
     .update({
       do_not_contact: true,
-      do_not_contact_reason: reason || "user-requested",
+      do_not_contact_reason: clamp(reason || "user-requested", MAX_REASON_LENGTH),
       status: "do_not_contact",
     })
     .eq("id", leadId);
