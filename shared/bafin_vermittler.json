@@ -1,0 +1,49 @@
+{
+  "$schema": "BaFin-registrierte Vermittler von Vermögensanlagen (KWG/WpIG). Bei Lead-Match → Hard-Gate-Reject (Konkurrenz, möglicher Mitarbeiter eines Konkurrenten).",
+  "$instructions": "Pflegbar manuell. Quellen: bafin.de Vermittlerregister. Match auf normalisierten Firmennamen. Anti-Persona: true = Lead wird verworfen.",
+  "version": 1,
+  "updated_at": "2026-05-25",
+  "entries": [
+    {
+      "name": "Schmidtner GmbH",
+      "name_normalized": "schmidtner",
+      "bafin_id": null,
+      "category": "sachwert_vermittler",
+      "anti_persona": true,
+      "notes": "Sachwert-Vermittler — listet Direktinvestments inkl. Helium-nahe Strukturen"
+    },
+    {
+      "name": "Sachwert Invest GmbH",
+      "name_normalized": "sachwert invest",
+      "bafin_id": "80175797",
+      "category": "sachwert_vermittler",
+      "anti_persona": true,
+      "notes": "BaFin-registrierter Vermittler für Vermögensanlagen, gleiche Zielgruppe"
+    },
+    {
+      "name": "efonds24 AG",
+      "name_normalized": "efonds24",
+      "bafin_id": null,
+      "category": "sachwert_vermittler",
+      "anti_persona": true,
+      "notes": "Online-Vermittler Direktinvestments"
+    },
+    {
+      "name": "HW HanseInvest GmbH",
+      "name_normalized": "hw hanseinvest",
+      "bafin_id": null,
+      "category": "sachwert_vermittler",
+      "anti_persona": true,
+      "notes": "Sachwert-Vermittler DACH"
+    },
+    {
+      "name": "Kraus Finanz",
+      "name_normalized": "kraus finanz",
+      "bafin_id": null,
+      "category": "sachwert_vermittler",
+      "anti_persona": true,
+      "notes": "Joachim Kraus / Kraus Finanz — alternative-investment-Strukturvertrieb"
+    }
+  ],
+  "$tip": "Format: name + name_normalized + bafin_id (optional) + category (sachwert_vermittler | wpapier_vermittler | struktur_vertrieb) + anti_persona (bool) + notes"
+}

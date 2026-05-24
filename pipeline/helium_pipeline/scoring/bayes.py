@@ -43,6 +43,8 @@ from .anti_filters import (
     is_liquidation_company,
     is_sweet_spot_size,
 )
+from .bafin_vermittler import is_bafin_vermittler_match
+from .offeneregister import is_mailbox_cluster_address
 
 # ───────────────────────────────────────────────────────────────────────────
 # Konstanten — alles zentral, leicht anpassbar nach Closer-Feedback
@@ -141,6 +143,16 @@ def _check_hard_gates(inp: ScoringInput) -> tuple[bool, list[str]]:
     provider = address_contains_mailbox_provider(address)
     if provider:
         reasons.append(f"mailbox_provider:{provider}")
+
+    # Gate 5b: Briefkasten-Cluster aus OffeneRegister (>100 GmbHs/Adresse)
+    is_cluster, count = is_mailbox_cluster_address(b.company_address)
+    if is_cluster:
+        reasons.append(f"mailbox_cluster:{count}_gmbhs_at_address")
+
+    # Gate 5c: BaFin-Vermittler-Konkurrent
+    is_bafin, bafin_cat = is_bafin_vermittler_match(company_name=b.company_name)
+    if is_bafin:
+        reasons.append(f"bafin_vermittler:{bafin_cat}")
 
     # Gate 6: Sweet-Spot-Size (nur wenn Enrichment-Daten da)
     if inp.enrichment and (inp.enrichment.balance_sum_eur or inp.enrichment.equity_eur):

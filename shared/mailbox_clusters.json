@@ -1,0 +1,1209 @@
+{
+  "$schema": "Briefkasten-Cluster: Adressen mit >=100 GmbHs lt OffeneRegister 2022.",
+  "version": 2,
+  "source": "OffeneRegister.de handelsregister.db 2022-10-21 (utf-8 decoded)",
+  "min_companies": 100,
+  "updated_at": "2026-05-25",
+  "clusters": [
+    {
+      "address_pattern": "c/o VRB Vorratsgesellschaften GmbH Friedrichstraße 133",
+      "gmbh_count": 3466
+    },
+    {
+      "address_pattern": "Kurt-Schumacher-Str. 18-20",
+      "gmbh_count": 2839
+    },
+    {
+      "address_pattern": "Theresienhöhe 30 c/o Blitzstart Holding AG",
+      "gmbh_count": 2794
+    },
+    {
+      "address_pattern": "Bavariaring 29",
+      "gmbh_count": 2385
+    },
+    {
+      "address_pattern": "Kurt-Schumacher-Straße 18-20",
+      "gmbh_count": 1937
+    },
+    {
+      "address_pattern": "c/o Blitzstart Holding AG Theresienhöhe 30",
+      "gmbh_count": 1554
+    },
+    {
+      "address_pattern": "c/o Cormoran GmbH Am Zirkus 2",
+      "gmbh_count": 1473
+    },
+    {
+      "address_pattern": "Torstraße 138",
+      "gmbh_count": 1405
+    },
+    {
+      "address_pattern": "Wilhelmstraße 25",
+      "gmbh_count": 1203
+    },
+    {
+      "address_pattern": "c/o VRB Vorratsgesellschaften GmbH An der Welle 4",
+      "gmbh_count": 1133
+    },
+    {
+      "address_pattern": "Emy-Roeder-Straße 2",
+      "gmbh_count": 1130
+    },
+    {
+      "address_pattern": "Königsallee 102",
+      "gmbh_count": 1028
+    },
+    {
+      "address_pattern": "Kronenstraße 73",
+      "gmbh_count": 992
+    },
+    {
+      "address_pattern": "Weidkamp 180",
+      "gmbh_count": 908
+    },
+    {
+      "address_pattern": "Bavariaring 29 c/o Blitzstart Holding AG",
+      "gmbh_count": 851
+    },
+    {
+      "address_pattern": "Wilhelm-Theodor-Römheld-Straße 30",
+      "gmbh_count": 833
+    },
+    {
+      "address_pattern": "Industriestraße 1",
+      "gmbh_count": 703
+    },
+    {
+      "address_pattern": "Schwanthalerstraße 73 c/o SCUR24 Holding GmbH",
+      "gmbh_count": 657
+    },
+    {
+      "address_pattern": "Friedrichstraße 95",
+      "gmbh_count": 634
+    },
+    {
+      "address_pattern": "Pappelallee 78/79",
+      "gmbh_count": 631
+    },
+    {
+      "address_pattern": "Königsallee 106",
+      "gmbh_count": 627
+    },
+    {
+      "address_pattern": "Weißenburger Str. 10",
+      "gmbh_count": 618
+    },
+    {
+      "address_pattern": "Bahnhofplatz 1",
+      "gmbh_count": 617
+    },
+    {
+      "address_pattern": "Tölzer Straße 15",
+      "gmbh_count": 589
+    },
+    {
+      "address_pattern": "Bavariafilmplatz 7",
+      "gmbh_count": 575
+    },
+    {
+      "address_pattern": "Schanzenstraße 94",
+      "gmbh_count": 570
+    },
+    {
+      "address_pattern": "Mainzer Landstraße 46",
+      "gmbh_count": 567
+    },
+    {
+      "address_pattern": "Friedrichstraße 171",
+      "gmbh_count": 553
+    },
+    {
+      "address_pattern": "Mühlenstraße 8 a",
+      "gmbh_count": 550
+    },
+    {
+      "address_pattern": "Thurn-und-Taxis-Platz 6",
+      "gmbh_count": 545
+    },
+    {
+      "address_pattern": "Bahnhofstraße 1",
+      "gmbh_count": 535
+    },
+    {
+      "address_pattern": "Hauptstraße 28",
+      "gmbh_count": 533
+    },
+    {
+      "address_pattern": "Wittestraße 30 Haus F",
+      "gmbh_count": 531
+    },
+    {
+      "address_pattern": "Eschenheimer Anlage 1",
+      "gmbh_count": 519
+    },
+    {
+      "address_pattern": "Hauptstraße 1",
+      "gmbh_count": 516
+    },
+    {
+      "address_pattern": "Kurt-Schumacher-Straße 18 - 20",
+      "gmbh_count": 507
+    },
+    {
+      "address_pattern": "c/o Lemerle Gesellschaftsgründer GmbH Kurfürstendamm 45",
+      "gmbh_count": 506
+    },
+    {
+      "address_pattern": "Industriestraße 2",
+      "gmbh_count": 506
+    },
+    {
+      "address_pattern": "Landkreis München Bavariafilmplatz 7",
+      "gmbh_count": 503
+    },
+    {
+      "address_pattern": "c/o Blitzstart Holding AG Bavariaring 29",
+      "gmbh_count": 494
+    },
+    {
+      "address_pattern": "Landkreis München Tölzer Str. 15",
+      "gmbh_count": 488
+    },
+    {
+      "address_pattern": "Linienstr. 130",
+      "gmbh_count": 486
+    },
+    {
+      "address_pattern": "Ganghoferstr. 33",
+      "gmbh_count": 472
+    },
+    {
+      "address_pattern": "Zirkusweg 2",
+      "gmbh_count": 471
+    },
+    {
+      "address_pattern": "Landkreis München Tölzer Straße 15",
+      "gmbh_count": 471
+    },
+    {
+      "address_pattern": "Westendstraße 28",
+      "gmbh_count": 462
+    },
+    {
+      "address_pattern": "Palmaille 67",
+      "gmbh_count": 455
+    },
+    {
+      "address_pattern": "Industriestraße 4",
+      "gmbh_count": 454
+    },
+    {
+      "address_pattern": "Neuer Wall 42",
+      "gmbh_count": 449
+    },
+    {
+      "address_pattern": "Industriestraße 10",
+      "gmbh_count": 449
+    },
+    {
+      "address_pattern": "Siemensstraße 31",
+      "gmbh_count": 448
+    },
+    {
+      "address_pattern": "Klein-Buchholzer Kirchweg 55",
+      "gmbh_count": 442
+    },
+    {
+      "address_pattern": "Kurfürstendamm 21",
+      "gmbh_count": 436
+    },
+    {
+      "address_pattern": "Kurfürstendamm 194",
+      "gmbh_count": 435
+    },
+    {
+      "address_pattern": "Hauptstraße 2",
+      "gmbh_count": 412
+    },
+    {
+      "address_pattern": "Hauptstraße 117",
+      "gmbh_count": 412
+    },
+    {
+      "address_pattern": "Mercedesstraße 6",
+      "gmbh_count": 411
+    },
+    {
+      "address_pattern": "Mainzer Landstraße 47",
+      "gmbh_count": 395
+    },
+    {
+      "address_pattern": "Bahnhofstraße 2",
+      "gmbh_count": 395
+    },
+    {
+      "address_pattern": "Königsallee 14",
+      "gmbh_count": 394
+    },
+    {
+      "address_pattern": "Bahnhofstraße 6",
+      "gmbh_count": 390
+    },
+    {
+      "address_pattern": "Industriestraße 6",
+      "gmbh_count": 385
+    },
+    {
+      "address_pattern": "Wilhelm-Theodor-Römheld-Str. 30",
+      "gmbh_count": 384
+    },
+    {
+      "address_pattern": "Bahnhofstraße 7",
+      "gmbh_count": 372
+    },
+    {
+      "address_pattern": "Bleichenbrücke 10",
+      "gmbh_count": 371
+    },
+    {
+      "address_pattern": "Kirchstraße 1",
+      "gmbh_count": 370
+    },
+    {
+      "address_pattern": "Industriestraße 3",
+      "gmbh_count": 369
+    },
+    {
+      "address_pattern": "Hohe Bleichen 12",
+      "gmbh_count": 368
+    },
+    {
+      "address_pattern": "Industriestraße 5",
+      "gmbh_count": 364
+    },
+    {
+      "address_pattern": "Eleonorenstraße 64",
+      "gmbh_count": 364
+    },
+    {
+      "address_pattern": "Industriestraße 8",
+      "gmbh_count": 362
+    },
+    {
+      "address_pattern": "Bahnhofstraße 18",
+      "gmbh_count": 362
+    },
+    {
+      "address_pattern": "Bahnhofstraße 8",
+      "gmbh_count": 360
+    },
+    {
+      "address_pattern": "Elbchaussee 370",
+      "gmbh_count": 355
+    },
+    {
+      "address_pattern": "Ruhrallee 9",
+      "gmbh_count": 354
+    },
+    {
+      "address_pattern": "Bahnhofstraße 5",
+      "gmbh_count": 353
+    },
+    {
+      "address_pattern": "Bahnhofstraße 11",
+      "gmbh_count": 351
+    },
+    {
+      "address_pattern": "Industriestr. 1",
+      "gmbh_count": 350
+    },
+    {
+      "address_pattern": "Torstr. 138",
+      "gmbh_count": 349
+    },
+    {
+      "address_pattern": "Landkreis Starnberg Feldafinger Str. 5",
+      "gmbh_count": 347
+    },
+    {
+      "address_pattern": "Friedrichstraße 123",
+      "gmbh_count": 345
+    },
+    {
+      "address_pattern": "Marktplatz 1",
+      "gmbh_count": 343
+    },
+    {
+      "address_pattern": "Haferweg 24",
+      "gmbh_count": 342
+    },
+    {
+      "address_pattern": "Linienstraße 130",
+      "gmbh_count": 340
+    },
+    {
+      "address_pattern": "Im Mediapark 8",
+      "gmbh_count": 334
+    },
+    {
+      "address_pattern": "Industriestraße 11",
+      "gmbh_count": 331
+    },
+    {
+      "address_pattern": "Pfingstweidstraße 3",
+      "gmbh_count": 328
+    },
+    {
+      "address_pattern": "Burchardstraße 24",
+      "gmbh_count": 326
+    },
+    {
+      "address_pattern": "Robert-Bosch-Straße 7",
+      "gmbh_count": 323
+    },
+    {
+      "address_pattern": "Burchardstraße 8",
+      "gmbh_count": 322
+    },
+    {
+      "address_pattern": "Prinzenallee 7",
+      "gmbh_count": 319
+    },
+    {
+      "address_pattern": "Bahnhofstraße 4",
+      "gmbh_count": 315
+    },
+    {
+      "address_pattern": "Bahnhofstraße 10",
+      "gmbh_count": 315
+    },
+    {
+      "address_pattern": "Bergstr. 76",
+      "gmbh_count": 314
+    },
+    {
+      "address_pattern": "Neuer Wall 10",
+      "gmbh_count": 311
+    },
+    {
+      "address_pattern": "Johannisstraße 20",
+      "gmbh_count": 311
+    },
+    {
+      "address_pattern": "Graf-Adolf-Platz 15",
+      "gmbh_count": 310
+    },
+    {
+      "address_pattern": "Am Zirkus 2 c/o Cormoran GmbH",
+      "gmbh_count": 310
+    },
+    {
+      "address_pattern": "Mergenthalerallee 10-12",
+      "gmbh_count": 308
+    },
+    {
+      "address_pattern": "Stephanitorsbollwerk 3",
+      "gmbh_count": 307
+    },
+    {
+      "address_pattern": "Neuer Wall 50",
+      "gmbh_count": 306
+    },
+    {
+      "address_pattern": "Hauptstraße 8",
+      "gmbh_count": 306
+    },
+    {
+      "address_pattern": "Hauptstraße 131-137",
+      "gmbh_count": 306
+    },
+    {
+      "address_pattern": "Industriestraße 7",
+      "gmbh_count": 305
+    },
+    {
+      "address_pattern": "Amalienstr. 71",
+      "gmbh_count": 304
+    },
+    {
+      "address_pattern": "Bahnhofstraße 9",
+      "gmbh_count": 302
+    },
+    {
+      "address_pattern": "An der Welle 4",
+      "gmbh_count": 301
+    },
+    {
+      "address_pattern": "Winterhuder Weg 29",
+      "gmbh_count": 300
+    },
+    {
+      "address_pattern": "Markt 1",
+      "gmbh_count": 300
+    },
+    {
+      "address_pattern": "Mühlenstraße 8a",
+      "gmbh_count": 298
+    },
+    {
+      "address_pattern": "Industriestraße 12",
+      "gmbh_count": 298
+    },
+    {
+      "address_pattern": "Zeppelinstraße 1",
+      "gmbh_count": 296
+    },
+    {
+      "address_pattern": "Bahnhofstraße 13",
+      "gmbh_count": 296
+    },
+    {
+      "address_pattern": "Warburgstraße 50",
+      "gmbh_count": 295
+    },
+    {
+      "address_pattern": "Mainzer Landstraße 16",
+      "gmbh_count": 295
+    },
+    {
+      "address_pattern": "Hauptstraße 9",
+      "gmbh_count": 294
+    },
+    {
+      "address_pattern": "Bahnhofstraße 3",
+      "gmbh_count": 294
+    },
+    {
+      "address_pattern": "Hauptstraße 4",
+      "gmbh_count": 289
+    },
+    {
+      "address_pattern": "Hauptstraße 20",
+      "gmbh_count": 289
+    },
+    {
+      "address_pattern": "Bahnhofstraße 15",
+      "gmbh_count": 289
+    },
+    {
+      "address_pattern": "Hauptstraße 27",
+      "gmbh_count": 286
+    },
+    {
+      "address_pattern": "Widenmayerstr. 27",
+      "gmbh_count": 281
+    },
+    {
+      "address_pattern": "Hauptstraße 3",
+      "gmbh_count": 279
+    },
+    {
+      "address_pattern": "c/o Youco24 Vorratsgesellschaften GmbH Rhein-Carré Oststraße 11-13",
+      "gmbh_count": 278
+    },
+    {
+      "address_pattern": "Ottostraße 3",
+      "gmbh_count": 278
+    },
+    {
+      "address_pattern": "Hauptstraße 5",
+      "gmbh_count": 278
+    },
+    {
+      "address_pattern": "Maximiliansplatz 17 c/o Blitzstart Holding AG",
+      "gmbh_count": 276
+    },
+    {
+      "address_pattern": "Unter den Linden 21",
+      "gmbh_count": 272
+    },
+    {
+      "address_pattern": "Tölzer Str. 15",
+      "gmbh_count": 271
+    },
+    {
+      "address_pattern": "Hauptstraße 16",
+      "gmbh_count": 271
+    },
+    {
+      "address_pattern": "Hauptstraße 13",
+      "gmbh_count": 271
+    },
+    {
+      "address_pattern": "Hauptstraße 11",
+      "gmbh_count": 271
+    },
+    {
+      "address_pattern": "Im Mediapark 5",
+      "gmbh_count": 270
+    },
+    {
+      "address_pattern": "Konrad-Zuse-Platz 8",
+      "gmbh_count": 269
+    },
+    {
+      "address_pattern": "Hauptstraße 15",
+      "gmbh_count": 269
+    },
+    {
+      "address_pattern": "Friedrichstraße 133 c/o VRB Vorratsgesellschaften GmbH",
+      "gmbh_count": 268
+    },
+    {
+      "address_pattern": "Kurfürstendamm 207-208",
+      "gmbh_count": 267
+    },
+    {
+      "address_pattern": "Bahnhofstraße 14",
+      "gmbh_count": 266
+    },
+    {
+      "address_pattern": "Am Karlsbad 11",
+      "gmbh_count": 266
+    },
+    {
+      "address_pattern": "Marktplatz 3",
+      "gmbh_count": 265
+    },
+    {
+      "address_pattern": "Mainzer Landstr. 47",
+      "gmbh_count": 265
+    },
+    {
+      "address_pattern": "Hauptstraße 25",
+      "gmbh_count": 265
+    },
+    {
+      "address_pattern": "Hardenbergstraße 12",
+      "gmbh_count": 265
+    },
+    {
+      "address_pattern": "Cremon 3",
+      "gmbh_count": 261
+    },
+    {
+      "address_pattern": "Industriestr. 2",
+      "gmbh_count": 259
+    },
+    {
+      "address_pattern": "Industriestraße 9",
+      "gmbh_count": 258
+    },
+    {
+      "address_pattern": "Industriestraße 15",
+      "gmbh_count": 258
+    },
+    {
+      "address_pattern": "Kardinal-Faulhaber-Str. 10",
+      "gmbh_count": 257
+    },
+    {
+      "address_pattern": "Münchener Straße 1",
+      "gmbh_count": 255
+    },
+    {
+      "address_pattern": "Marktstraße 10",
+      "gmbh_count": 255
+    },
+    {
+      "address_pattern": "Leopoldstr. 153",
+      "gmbh_count": 254
+    },
+    {
+      "address_pattern": "Beim Strohhause 27",
+      "gmbh_count": 254
+    },
+    {
+      "address_pattern": "Zirkusweg 1",
+      "gmbh_count": 253
+    },
+    {
+      "address_pattern": "Hauptstraße 18",
+      "gmbh_count": 253
+    },
+    {
+      "address_pattern": "Hauptstraße 12",
+      "gmbh_count": 253
+    },
+    {
+      "address_pattern": "Hauptstraße 10",
+      "gmbh_count": 253
+    },
+    {
+      "address_pattern": "Bahnhofstraße 22",
+      "gmbh_count": 251
+    },
+    {
+      "address_pattern": "Bahnhofstraße 20",
+      "gmbh_count": 250
+    },
+    {
+      "address_pattern": "Hauptstraße 19",
+      "gmbh_count": 249
+    },
+    {
+      "address_pattern": "Baumwall 7",
+      "gmbh_count": 248
+    },
+    {
+      "address_pattern": "Baruther Straße 23",
+      "gmbh_count": 248
+    },
+    {
+      "address_pattern": "Am Kaiserkai 69",
+      "gmbh_count": 248
+    },
+    {
+      "address_pattern": "Hauptstraße 24",
+      "gmbh_count": 247
+    },
+    {
+      "address_pattern": "Friedrich-Ebert-Anlage 36",
+      "gmbh_count": 247
+    },
+    {
+      "address_pattern": "Hauptstraße 6",
+      "gmbh_count": 245
+    },
+    {
+      "address_pattern": "Kurfürstendamm 150",
+      "gmbh_count": 244
+    },
+    {
+      "address_pattern": "Landsberger Allee 394",
+      "gmbh_count": 242
+    },
+    {
+      "address_pattern": "Bahnhofstraße 16",
+      "gmbh_count": 242
+    },
+    {
+      "address_pattern": "Theresienhöhe 30",
+      "gmbh_count": 241
+    },
+    {
+      "address_pattern": "Lerchenweg 3",
+      "gmbh_count": 240
+    },
+    {
+      "address_pattern": "Mauerstraße 86-88",
+      "gmbh_count": 239
+    },
+    {
+      "address_pattern": "Lyoner Straße 14",
+      "gmbh_count": 239
+    },
+    {
+      "address_pattern": "Grafenberger Allee 277-287",
+      "gmbh_count": 239
+    },
+    {
+      "address_pattern": "Leopoldstraße 244",
+      "gmbh_count": 238
+    },
+    {
+      "address_pattern": "Hauptstraße 26",
+      "gmbh_count": 237
+    },
+    {
+      "address_pattern": "Westhafenplatz 1",
+      "gmbh_count": 236
+    },
+    {
+      "address_pattern": "Storkower Straße 139 B",
+      "gmbh_count": 236
+    },
+    {
+      "address_pattern": "Hauptstraße 22",
+      "gmbh_count": 236
+    },
+    {
+      "address_pattern": "Hauptstraße 7",
+      "gmbh_count": 235
+    },
+    {
+      "address_pattern": "Kaiserstraße 65",
+      "gmbh_count": 234
+    },
+    {
+      "address_pattern": "Junghofstraße 13-15",
+      "gmbh_count": 234
+    },
+    {
+      "address_pattern": "Hauptstraße 14",
+      "gmbh_count": 234
+    },
+    {
+      "address_pattern": "c/o SOFORT-Gesellschaften! AG Schillerstraße 47-49",
+      "gmbh_count": 233
+    },
+    {
+      "address_pattern": "Kurfürstenstraße 79",
+      "gmbh_count": 233
+    },
+    {
+      "address_pattern": "Bergstraße 28",
+      "gmbh_count": 233
+    },
+    {
+      "address_pattern": "Bahnhofstraße 17",
+      "gmbh_count": 233
+    },
+    {
+      "address_pattern": "Bahnhofstr. 1",
+      "gmbh_count": 233
+    },
+    {
+      "address_pattern": "Im Zollhafen 24",
+      "gmbh_count": 231
+    },
+    {
+      "address_pattern": "Hauptstraße 66",
+      "gmbh_count": 231
+    },
+    {
+      "address_pattern": "Bahnhofstraße 24",
+      "gmbh_count": 231
+    },
+    {
+      "address_pattern": "Ballindamm 17",
+      "gmbh_count": 230
+    },
+    {
+      "address_pattern": "Industriestraße 17",
+      "gmbh_count": 229
+    },
+    {
+      "address_pattern": "Am Sandtorkai 70",
+      "gmbh_count": 229
+    },
+    {
+      "address_pattern": "Sallerweg 30 c/o INOS24 Holding GmbH",
+      "gmbh_count": 228
+    },
+    {
+      "address_pattern": "Neuer Wall 80",
+      "gmbh_count": 228
+    },
+    {
+      "address_pattern": "Johann-Mohr-Weg 24 a c/o Gronemeier",
+      "gmbh_count": 228
+    },
+    {
+      "address_pattern": "Marie-Curie-Straße 1",
+      "gmbh_count": 227
+    },
+    {
+      "address_pattern": "Kronenstraße 73/74",
+      "gmbh_count": 227
+    },
+    {
+      "address_pattern": "Hauptstraße 17",
+      "gmbh_count": 227
+    },
+    {
+      "address_pattern": "Große Elbstraße 45",
+      "gmbh_count": 226
+    },
+    {
+      "address_pattern": "Feldafinger Str. 5",
+      "gmbh_count": 224
+    },
+    {
+      "address_pattern": "Wasserstraße 18",
+      "gmbh_count": 223
+    },
+    {
+      "address_pattern": "Leopoldstr. 244",
+      "gmbh_count": 223
+    },
+    {
+      "address_pattern": "Agnes-Pockels-Bogen 1",
+      "gmbh_count": 223
+    },
+    {
+      "address_pattern": "Friedrichstraße 15",
+      "gmbh_count": 222
+    },
+    {
+      "address_pattern": "Eschersheimer Landstraße 223",
+      "gmbh_count": 222
+    },
+    {
+      "address_pattern": "Bahnhofstraße 19",
+      "gmbh_count": 222
+    },
+    {
+      "address_pattern": "Rathausplatz 1",
+      "gmbh_count": 221
+    },
+    {
+      "address_pattern": "Neuer Zollhof 3",
+      "gmbh_count": 221
+    },
+    {
+      "address_pattern": "Industriestr. 4",
+      "gmbh_count": 221
+    },
+    {
+      "address_pattern": "Hohenstaufenring 62",
+      "gmbh_count": 221
+    },
+    {
+      "address_pattern": "Rupert-Mayer-Straße 44 c/o INOS24 Holding GmbH",
+      "gmbh_count": 220
+    },
+    {
+      "address_pattern": "Industriestraße 14",
+      "gmbh_count": 220
+    },
+    {
+      "address_pattern": "Industriestr. 3",
+      "gmbh_count": 220
+    },
+    {
+      "address_pattern": "Bettinastraße 30",
+      "gmbh_count": 220
+    },
+    {
+      "address_pattern": "Gewerbestraße 1",
+      "gmbh_count": 218
+    },
+    {
+      "address_pattern": "Bahnhofstraße 12",
+      "gmbh_count": 218
+    },
+    {
+      "address_pattern": "Hauptstr. 1",
+      "gmbh_count": 217
+    },
+    {
+      "address_pattern": "Lange Enden 29",
+      "gmbh_count": 216
+    },
+    {
+      "address_pattern": "Glockengießerwall 26",
+      "gmbh_count": 216
+    },
+    {
+      "address_pattern": "Holzmarkt 1",
+      "gmbh_count": 215
+    },
+    {
+      "address_pattern": "Hauptstraße 41",
+      "gmbh_count": 215
+    },
+    {
+      "address_pattern": "Gutenbergstraße 1",
+      "gmbh_count": 215
+    },
+    {
+      "address_pattern": "Bahnhofstraße 28",
+      "gmbh_count": 215
+    },
+    {
+      "address_pattern": "Bahnhofsplatz 1",
+      "gmbh_count": 215
+    },
+    {
+      "address_pattern": "Lebacher Straße 4",
+      "gmbh_count": 214
+    },
+    {
+      "address_pattern": "Hauptstraße 30",
+      "gmbh_count": 214
+    },
+    {
+      "address_pattern": "Ruhrallee 185",
+      "gmbh_count": 213
+    },
+    {
+      "address_pattern": "Mühlenstraße 8 A",
+      "gmbh_count": 213
+    },
+    {
+      "address_pattern": "Alter Fischmarkt 11",
+      "gmbh_count": 213
+    },
+    {
+      "address_pattern": "Rudolf-Diesel-Straße 5",
+      "gmbh_count": 212
+    },
+    {
+      "address_pattern": "Landshuter Allee 8-10",
+      "gmbh_count": 212
+    },
+    {
+      "address_pattern": "Industriestr. 6",
+      "gmbh_count": 212
+    },
+    {
+      "address_pattern": "Kurfürstendamm 45 c/o Lemerle Gesellschaftsgründer GmbH",
+      "gmbh_count": 211
+    },
+    {
+      "address_pattern": "Hauptstraße 21",
+      "gmbh_count": 211
+    },
+    {
+      "address_pattern": "Poststraße 2-4",
+      "gmbh_count": 210
+    },
+    {
+      "address_pattern": "Max-Planck-Straße 3",
+      "gmbh_count": 210
+    },
+    {
+      "address_pattern": "Königsallee 60 F",
+      "gmbh_count": 210
+    },
+    {
+      "address_pattern": "Hauptstraße 23",
+      "gmbh_count": 210
+    },
+    {
+      "address_pattern": "Gustav-Stresemann-Ring 1",
+      "gmbh_count": 210
+    },
+    {
+      "address_pattern": "Droysenstraße 5",
+      "gmbh_count": 210
+    },
+    {
+      "address_pattern": "Bahnhofstr. 13",
+      "gmbh_count": 210
+    },
+    {
+      "address_pattern": "Rheinsberger Straße 76/77",
+      "gmbh_count": 209
+    },
+    {
+      "address_pattern": "Nördliche Münchner Straße 47",
+      "gmbh_count": 209
+    },
+    {
+      "address_pattern": "Mergenthalerallee 73-75",
+      "gmbh_count": 209
+    },
+    {
+      "address_pattern": "Neuer Wall 63",
+      "gmbh_count": 208
+    },
+    {
+      "address_pattern": "Universitätsstraße 133",
+      "gmbh_count": 207
+    },
+    {
+      "address_pattern": "Idafehn Nord 11",
+      "gmbh_count": 207
+    },
+    {
+      "address_pattern": "Kurfürstendamm 226",
+      "gmbh_count": 206
+    },
+    {
+      "address_pattern": "Charlottenstraße 45-51",
+      "gmbh_count": 206
+    },
+    {
+      "address_pattern": "Hauptstraße 36",
+      "gmbh_count": 205
+    },
+    {
+      "address_pattern": "Bahnhofstraße 41",
+      "gmbh_count": 205
+    },
+    {
+      "address_pattern": "Millerntorplatz 1",
+      "gmbh_count": 204
+    },
+    {
+      "address_pattern": "Mercedesstr. 6",
+      "gmbh_count": 202
+    },
+    {
+      "address_pattern": "Industriestraße 13",
+      "gmbh_count": 202
+    },
+    {
+      "address_pattern": "Eschersheimer Landstraße 14",
+      "gmbh_count": 202
+    },
+    {
+      "address_pattern": "Bundesplatz 8",
+      "gmbh_count": 202
+    },
+    {
+      "address_pattern": "Bahnhofstraße 26",
+      "gmbh_count": 202
+    },
+    {
+      "address_pattern": "Bahnhofstraße 21",
+      "gmbh_count": 202
+    },
+    {
+      "address_pattern": "Frankfurter Straße 92",
+      "gmbh_count": 201
+    },
+    {
+      "address_pattern": "Industriestraße 18",
+      "gmbh_count": 200
+    },
+    {
+      "address_pattern": "Bahnhofstraße 30",
+      "gmbh_count": 200
+    },
+    {
+      "address_pattern": "Stockholmer Allee 53",
+      "gmbh_count": 199
+    },
+    {
+      "address_pattern": "Potsdamer Platz 11",
+      "gmbh_count": 199
+    },
+    {
+      "address_pattern": "Mauerstraße 86 - 88",
+      "gmbh_count": 199
+    },
+    {
+      "address_pattern": "Kurfürstendamm 207 - 208",
+      "gmbh_count": 199
+    },
+    {
+      "address_pattern": "Hauptstraße 29",
+      "gmbh_count": 199
+    },
+    {
+      "address_pattern": "Bayenthalgürtel 4",
+      "gmbh_count": 199
+    },
+    {
+      "address_pattern": "Hauptstraße 33",
+      "gmbh_count": 197
+    },
+    {
+      "address_pattern": "Steinstraße 41",
+      "gmbh_count": 196
+    },
+    {
+      "address_pattern": "Emmericher Straße 26",
+      "gmbh_count": 196
+    },
+    {
+      "address_pattern": "Dorfstraße 1",
+      "gmbh_count": 196
+    },
+    {
+      "address_pattern": "Altrottstraße 31",
+      "gmbh_count": 196
+    },
+    {
+      "address_pattern": "Kurfürstenstr. 79",
+      "gmbh_count": 195
+    },
+    {
+      "address_pattern": "Industriestr. 10",
+      "gmbh_count": 195
+    },
+    {
+      "address_pattern": "Am Bahnhof 1",
+      "gmbh_count": 195
+    },
+    {
+      "address_pattern": "ABC-Straße 19",
+      "gmbh_count": 195
+    },
+    {
+      "address_pattern": "Uerdinger Str. 90",
+      "gmbh_count": 194
+    },
+    {
+      "address_pattern": "Rhenus Platz 1",
+      "gmbh_count": 194
+    },
+    {
+      "address_pattern": "Sommerhalde 33",
+      "gmbh_count": 193
+    },
+    {
+      "address_pattern": "Robert-Bosch-Straße 5",
+      "gmbh_count": 193
+    },
+    {
+      "address_pattern": "Hauptstraße 37",
+      "gmbh_count": 193
+    },
+    {
+      "address_pattern": "Friedrichstr. 171",
+      "gmbh_count": 193
+    },
+    {
+      "address_pattern": "Bahnhofstr. 8",
+      "gmbh_count": 193
+    },
+    {
+      "address_pattern": "Hauptstraße 134",
+      "gmbh_count": 192
+    },
+    {
+      "address_pattern": "Platz der Einheit 1",
+      "gmbh_count": 191
+    },
+    {
+      "address_pattern": "Hauptstraße 35",
+      "gmbh_count": 191
+    },
+    {
+      "address_pattern": "Hauptstr. 2",
+      "gmbh_count": 191
+    },
+    {
+      "address_pattern": "Bahnhofstr. 5",
+      "gmbh_count": 191
+    },
+    {
+      "address_pattern": "Marktplatz 5",
+      "gmbh_count": 190
+    },
+    {
+      "address_pattern": "Bahnhofstraße 32",
+      "gmbh_count": 190
+    },
+    {
+      "address_pattern": "An den Römerhügeln 1",
+      "gmbh_count": 190
+    },
+    {
+      "address_pattern": "Wadenbrunner Str. 10",
+      "gmbh_count": 189
+    },
+    {
+      "address_pattern": "Steinstr. 41",
+      "gmbh_count": 189
+    },
+    {
+      "address_pattern": "Industriestraße 19",
+      "gmbh_count": 189
+    },
+    {
+      "address_pattern": "Westhafenstraße 1",
+      "gmbh_count": 188
+    },
+    {
+      "address_pattern": "Valentinskamp 24",
+      "gmbh_count": 188
+    },
+    {
+      "address_pattern": "Siemensstraße 1",
+      "gmbh_count": 188
+    },
+    {
+      "address_pattern": "Neue Mainzer Str. 20 MainTor",
+      "gmbh_count": 188
+    },
+    {
+      "address_pattern": "Elsterstraße 26",
+      "gmbh_count": 188
+    }
+  ]
+}
