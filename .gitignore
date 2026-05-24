@@ -1,0 +1,56 @@
+# ─── Secrets ────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ─── Node ───────────────────────────────────────────
+node_modules/
+.next/
+out/
+.turbo/
+*.log
+.pnpm-debug.log*
+
+# ─── Python ─────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ─── Playwright ─────────────────────────────────────
+playwright-report/
+test-results/
+.playwright/
+
+# ─── OS ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── IDEs ───────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ─── Local data / Crawl-Artefakte ───────────────────
+local_data/
+crawl_cache/
+*.sqlite
+*.db
+
+# ─── Web / Screenshots / Debug-Artefakte ────────────
+web/screenshots/
+web/.next/
+web/screenshot.mjs
+pipeline/debug_*.html
+debug_hr_landing.html
+
+# ─── Optional: Strategie-Dokumente sind Teil der Doku (committed)
+# RECHERCHE_*.md und MVLT_*.md committen wir bewusst
+.claude/
