@@ -64,6 +64,73 @@ EK_ULTRA = 10_000_000.0
 # DACH-PLZ-Pattern (vereinfacht — vollständige Validierung in Crawler)
 DACH_COUNTRY_CODES = {CountryCode.DE.value, CountryCode.AT.value, CountryCode.CH.value}
 
+# ───────────────────────────────────────────────────────────────────────────
+# Phase 8.2 — Signal-Familien für Cluster-Cap / Diminishing Returns
+# Within-Family: stärkstes LR zählt 100%, weitere mit Gewicht 0.5 (Hybrid).
+# Cross-Family: voll multiplikativ.
+# Penalty (LR<1) folgt derselben Regel — wird abgeschwächt wenn stärkerer
+# Boost in derselben Familie liegt (gewollt: Cashflow-negativ bei sonst-
+# starkem Lead soll nicht overkillen).
+# ───────────────────────────────────────────────────────────────────────────
+
+FAMILY_VERMOEGEN = "vermoegen"
+FAMILY_AKTIVITAET = "aktivitaet"
+FAMILY_AFFINITAET = "affinitaet"
+FAMILY_REACHABILITY = "reachability"
+FAMILY_OTHER = "other"  # uncapped, fully multiplicative
+
+DIMINISHING_WEIGHT = 0.5  # Gewicht für nicht-stärkste LRs in derselben Familie
+
+LR_FAMILY: dict[str, str] = {
+    # ─── Vermögen ──────────────────────────────────────────────────────
+    "ek_ge_500k": FAMILY_VERMOEGEN,
+    "ek_ge_2m": FAMILY_VERMOEGEN,
+    "ek_ge_10m": FAMILY_VERMOEGEN,
+    "liquid_assets_ge_500k": FAMILY_VERMOEGEN,
+    "liquid_assets_ge_1m": FAMILY_VERMOEGEN,
+    "liquid_assets_ge_5m": FAMILY_VERMOEGEN,
+    "operating_cashflow_ge_200k": FAMILY_VERMOEGEN,
+    "operating_cashflow_ge_500k": FAMILY_VERMOEGEN,
+    "operating_cashflow_ge_1m": FAMILY_VERMOEGEN,
+    "profit_ge_200k": FAMILY_VERMOEGEN,
+    "profit_ge_500k": FAMILY_VERMOEGEN,
+    "profit_ge_1m": FAMILY_VERMOEGEN,
+    "cashflow_negative": FAMILY_VERMOEGEN,
+    # ─── Aktivität ─────────────────────────────────────────────────────
+    "freshness_lt_7d": FAMILY_AKTIVITAET,
+    "freshness_7_14d": FAMILY_AKTIVITAET,
+    "freshness_14_30d": FAMILY_AKTIVITAET,
+    "freshness_30_60d": FAMILY_AKTIVITAET,
+    "trigger_shareholder_change_0_9mo": FAMILY_AKTIVITAET,
+    "trigger_gf_change": FAMILY_AKTIVITAET,
+    "trigger_new_registration_holding": FAMILY_AKTIVITAET,
+    "trigger_capital_increase": FAMILY_AKTIVITAET,
+    "trigger_q3_q4_praxisverkauf": FAMILY_AKTIVITAET,
+    "tax_trigger_paragr_16_34": FAMILY_AKTIVITAET,
+    # ─── Affinität ─────────────────────────────────────────────────────
+    # Investment-affine Persona-Hinweise + Investment-Strukturen
+    "name_contains_holding": FAMILY_AFFINITAET,
+    "name_contains_beteiligung": FAMILY_AFFINITAET,
+    "name_contains_vermoegen": FAMILY_AFFINITAET,
+    "name_family_office": FAMILY_AFFINITAET,
+    "us_business_hint": FAMILY_AFFINITAET,
+    "tax_paragraph_match_ja": FAMILY_AFFINITAET,
+    "wphg_voting_rights_3plus": FAMILY_AFFINITAET,
+    "wphg_voting_rights_5plus": FAMILY_AFFINITAET,
+}
+
+
+def _family_of(lr_key: str) -> str:
+    """Bestimme Familie für einen LR-Key. Dynamische Prefixe für extension."""
+    if lr_key.startswith("affinity_"):
+        return FAMILY_AFFINITAET
+    if lr_key.startswith("reachability_"):
+        return FAMILY_REACHABILITY
+    if lr_key.startswith("momentum_"):
+        return FAMILY_AKTIVITAET
+    return LR_FAMILY.get(lr_key, FAMILY_OTHER)
+
+
 # Likelihood-Ratios — kalibriert nach V2.3-Spec
 # (kann später admin-seitig im Web-UI angepasst werden)
 LR_TABLE: dict[str, float] = {
@@ -314,15 +381,77 @@ def _collect_evidence(inp: ScoringInput) -> dict[str, float]:
 # ───────────────────────────────────────────────────────────────────────────
 
 
-def _posterior_from_lrs(prior: float, lrs: dict[str, float]) -> float:
-    """Berechne Posterior aus Prior + Likelihood-Ratios in log-odds-Space."""
+def _group_by_family(lrs: dict[str, float]) -> dict[str, dict[str, float]]:
+    """Gruppiere LRs nach Signal-Familie."""
+    grouped: dict[str, dict[str, float]] = {}
+    for key, lr in lrs.items():
+        fam = _family_of(key)
+        grouped.setdefault(fam, {})[key] = lr
+    return grouped
+
+
+def _posterior_from_lrs(
+    prior: float, lrs: dict[str, float]
+) -> tuple[float, dict[str, dict]]:
+    """Berechne Posterior mit Cluster-Cap (Variante A: Hybrid).
+
+    Within-Family: stärkstes LR (=stärkster |log(LR)|) zählt 100%,
+    weitere mit Gewicht 0.5 (DIMINISHING_WEIGHT).
+    Cross-Family: voll multiplikativ.
+
+    Returns:
+        (posterior, family_breakdown) — family_breakdown ist {family: {
+            "lrs": {key: lr, ...},
+            "strongest_key": str,
+            "dimmed_keys": [str, ...],
+            "log_odds_contribution": float,
+        }} für Audit/UI.
+    """
     prior = max(min(prior, 0.999_999), 1e-12)
     log_odds = math.log(prior / (1 - prior))
-    for lr in lrs.values():
-        if lr > 0:
-            log_odds += math.log(lr)
-    # sigmoid
-    return 1 / (1 + math.exp(-log_odds))
+    breakdown: dict[str, dict] = {}
+
+    grouped = _group_by_family(lrs)
+    for fam, family_lrs in grouped.items():
+        if fam == FAMILY_OTHER:
+            # uncapped: voll multiplikativ
+            contribution = 0.0
+            for lr in family_lrs.values():
+                if lr > 0:
+                    contribution += math.log(lr)
+            log_odds += contribution
+            breakdown[fam] = {
+                "lrs": dict(family_lrs),
+                "strongest_key": None,
+                "dimmed_keys": [],
+                "log_odds_contribution": contribution,
+            }
+            continue
+
+        # Stärkste nach |log(LR)| (größter Effekt egal ob Boost oder Penalty)
+        sorted_items = sorted(
+            ((k, lr) for k, lr in family_lrs.items() if lr > 0),
+            key=lambda kv: abs(math.log(kv[1])),
+            reverse=True,
+        )
+        if not sorted_items:
+            continue
+        strongest_key, strongest_lr = sorted_items[0]
+        contribution = math.log(strongest_lr)
+        dimmed_keys = []
+        for k, lr in sorted_items[1:]:
+            contribution += DIMINISHING_WEIGHT * math.log(lr)
+            dimmed_keys.append(k)
+        log_odds += contribution
+        breakdown[fam] = {
+            "lrs": dict(family_lrs),
+            "strongest_key": strongest_key,
+            "dimmed_keys": dimmed_keys,
+            "log_odds_contribution": contribution,
+        }
+
+    posterior = 1 / (1 + math.exp(-log_odds))
+    return posterior, breakdown
 
 
 def _tier_from_posterior(posterior: float) -> LeadTier | None:
@@ -360,7 +489,7 @@ def score(inp: ScoringInput) -> ScoreBreakdown:
         )
 
     lrs = _collect_evidence(inp)
-    posterior = _posterior_from_lrs(PRIOR, lrs)
+    posterior, family_breakdown = _posterior_from_lrs(PRIOR, lrs)
     tier = _tier_from_posterior(posterior)
 
     # T1-GOLD-Label (Phase 6.1) — nicht-Tier, sondern UX-Marker
@@ -374,6 +503,7 @@ def score(inp: ScoringInput) -> ScoreBreakdown:
         hard_gates_passed=True,
         is_gold=gold,
         gold_reason=gold_reason,
+        family_breakdown=family_breakdown,
     )
 
 

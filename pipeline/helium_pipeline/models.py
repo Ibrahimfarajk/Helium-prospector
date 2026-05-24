@@ -138,6 +138,9 @@ class ScoreBreakdown(BaseModel):
     hard_gates_failed_reasons: list[str] = Field(default_factory=list)
     is_gold: bool = False
     gold_reason: str | None = None
+    # Phase 8.2 — Cluster-Cap-Aufschlüsselung pro Signal-Familie
+    family_breakdown: dict[str, dict] = Field(default_factory=dict)
+    """{family: {lrs, strongest_key, dimmed_keys, log_odds_contribution}}."""
 
 
 class Lead(BaseModel):

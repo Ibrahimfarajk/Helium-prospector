@@ -372,4 +372,33 @@ pipeline/scripts/
 | **Tests** | 101/101 Python grün, TypeScript+ESLint 0 errors |
 | **Performance** | Bayes 1000-Lead-Score: 126ms (war 6572ms) |
 | **Cron** | Daily 05:00 UTC, erste Ausführung 2026-05-25 |
+
+---
+
+## Phase 8.2 — Reachability + Cluster-Cap + F-Pack-Erweiterungen (2026-05-24)
+
+### Vor-Bau: 3 externe Reviews konsolidiert
+- Review 1: Lead-Quality (VV-GmbH, Profit-Jump, Fat-Tail)
+- Review 2: Bruchstellen (JA-Zeitverzug, VoIP-Filter)
+- Review 3: Kritische Analyse V3 (Reachability fehlt, Score-Inflation, Steuerberater-Cluster)
+- Plan-Review: 5 Schwachstellen identifiziert, Reihenfolge auf A2→A1 umgestellt (Cluster-Cap muss vor Reachability rein, sonst Inflation in der Mittel-Phase).
+
+### A2 — Cluster-Cap / Diminishing Returns ✅
+
+**Logik (Variante A Hybrid):**
+- 4 Signal-Familien: Vermögen, Aktivität, Affinität, Reachability.
+- Within-Family: stärkstes LR (nach |log(LR)|) zählt 100%, weitere Gewicht `DIMINISHING_WEIGHT=0.5`.
+- Cross-Family: voll multiplikativ.
+- Sortierung nach `|log(LR)|` damit Penalty (LR<1) korrekt als "stärkster Effekt" gewertet wird wenn allein in Familie.
+- `ScoreBreakdown.family_breakdown` loggt pro Familie: lrs, strongest_key, dimmed_keys, log_odds_contribution — Audit-friendly.
+
+**Verifikation mit synthetischem Helium-Lead:**
+- Posterior 100.00% → 99.96% (gesunde Korrektur, Gold-Pfad erhalten).
+- Affinität: helium_direct=30 voll, paragraph/wphg/holding-name dimmed.
+- Vermögen: ek_ge_2m voll, liquid/cashflow/profit dimmed.
+- Aktivität: shareholder_change voll, freshness dimmed.
+
+**Test-Anpassung:**
+- `test_combo_anteilseigner_plus_ek_reaches_t2` war inkonsistent (Name sagte T2, Body assertete T1 — Posterior war 0.243 auf der Kante). Cluster-Cap drückt auf 0.138 — sauber T2 wie Name sagt.
+- 101/101 Tests grün nach 1 Test-Fix.
 | **Cron** | Workflow eingerichtet, **Secrets-Setup ausstehend** |

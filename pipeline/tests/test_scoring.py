@@ -108,15 +108,18 @@ def test_lonely_freshness_does_not_pass():
 
 
 def test_combo_anteilseigner_plus_ek_reaches_t2():
-    """Anteilseigner-Wechsel + EK ≥2M → T2."""
+    """Anteilseigner-Wechsel + EK ≥2M → T2 (Phase 8.2 Cluster-Cap).
+
+    Mit Cluster-Cap dämpft die Aktivitäts-Familie ihre 2 LRs auf
+    log(10) + 0.5*log(4) statt log(40). Posterior fällt von ~0.24 auf ~0.14.
+    """
     bek = make_bek(
         bekanntmachung_type=BekanntmachungType.SHAREHOLDER_CHANGE, days_old=10
     )
     enr = CompanyEnrichment(hrb_nummer="HRB1", equity_eur=3_000_000)
     result = score(make_inp(bek=bek, enrichment=enr))
-    # LRs: shareholder_change ×10, ek_ge_2m ×8, freshness_7_14d ×4 = ×320 → posterior ~ 0.243
-    assert result.tier == LeadTier.T1
-    assert result.posterior >= T1_THRESHOLD
+    assert result.tier == LeadTier.T2
+    assert T2_THRESHOLD <= result.posterior < T1_THRESHOLD
 
 
 def test_holding_neugruendung_plus_ek_reaches_t1():
