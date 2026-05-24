@@ -32,6 +32,11 @@ from ..models import (
     LeadTier,
     ScoreBreakdown,
 )
+from .affinity import (
+    check_affinity_signals,
+    is_anti_persona_watch_match,
+    is_t1_gold,
+)
 
 # ───────────────────────────────────────────────────────────────────────────
 # Konstanten — alles zentral, leicht anpassbar nach Closer-Feedback
@@ -115,6 +120,12 @@ def _check_hard_gates(inp: ScoringInput) -> tuple[bool, list[str]]:
             "kein EK≥500k UND kein klarer Liquiditäts-Trigger"
         )
 
+    # Gate 3: Anti-Persona-Watch-List (Konkurrenz/Issuer)
+    if is_anti_persona_watch_match(
+        company_name=b.company_name, hrb_nummer=b.hrb_nummer
+    ):
+        reasons.append("watch_list_anti_persona (Konkurrenz/Issuer)")
+
     return (len(reasons) == 0, reasons)
 
 
@@ -191,6 +202,17 @@ def _collect_evidence(inp: ScoringInput) -> dict[str, float]:
         if e.has_us_business_hint:
             lrs["us_business_hint"] = LR_TABLE["us_business_hint"]
 
+    # ─── Affinity-Signals (Phase 6.1) ─────────────────────────────────
+    # Pattern-Match + Watch-List + (optional) JA-Volltext-Scan
+    ja_text = getattr(e, "ja_text", None) if e else None
+    affinity_lrs = check_affinity_signals(
+        company_name=b.company_name,
+        raw_text=b.raw_text,
+        ja_text=ja_text,
+        hrb_nummer=b.hrb_nummer,
+    )
+    lrs.update(affinity_lrs)
+
     return lrs
 
 
@@ -248,12 +270,17 @@ def score(inp: ScoringInput) -> ScoreBreakdown:
     posterior = _posterior_from_lrs(PRIOR, lrs)
     tier = _tier_from_posterior(posterior)
 
+    # T1-GOLD-Label (Phase 6.1) — nicht-Tier, sondern UX-Marker
+    gold, gold_reason = is_t1_gold(posterior, lrs)
+
     return ScoreBreakdown(
         prior=PRIOR,
         likelihood_ratios=lrs,
         posterior=posterior,
         tier=tier if tier else LeadTier.T3,  # nominal — Filter im Pipeline-Step
         hard_gates_passed=True,
+        is_gold=gold,
+        gold_reason=gold_reason,
     )
 
 

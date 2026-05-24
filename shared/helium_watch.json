@@ -1,0 +1,49 @@
+{
+  "$schema": "Manuelle Watch-Liste: Firmen mit bekanntem Helium-/Sachwert-/Direktbeteiligungs-Bezug. Bei Lead-Match → automatisch T1-GOLD.",
+  "$instructions": "Editiere diese Datei manuell, jede entry wird im nächsten Pipeline-Run gematcht. Match auf 'name_normalized' (lowercase) ODER 'hrb_nummer'. Behalte LR bei 50.0 (höchster Boost).",
+  "version": 1,
+  "updated_at": "2026-05-25",
+  "entries": [
+    {
+      "name": "NASCO Energie & Rohstoff AG",
+      "name_normalized": "nasco energie",
+      "hrb_nummer": null,
+      "category": "helium_industry",
+      "notes": "Konkurrent (Helium-Beteiligungen) — bei GF-Wechsel Anti-Persona",
+      "anti_persona": true
+    },
+    {
+      "name": "Star Oil Production GmbH",
+      "name_normalized": "star oil production",
+      "hrb_nummer": "HRB 138286",
+      "category": "issuer",
+      "notes": "Eigener Issuer-Anbieter — Skip aus Lead-Pool",
+      "anti_persona": true
+    },
+    {
+      "name": "Linde plc",
+      "name_normalized": "linde plc",
+      "hrb_nummer": null,
+      "category": "helium_industry",
+      "notes": "Größter Helium-Lieferant Welt — Mitarbeiter/Ex-Manager mit hoher Helium-Affinität",
+      "anti_persona": false
+    },
+    {
+      "name": "Air Liquide Deutschland",
+      "name_normalized": "air liquide",
+      "hrb_nummer": null,
+      "category": "helium_industry",
+      "notes": "Industriegas-Konzern, Helium-Großkunde",
+      "anti_persona": false
+    },
+    {
+      "name": "Siemens Healthineers",
+      "name_normalized": "siemens healthineers",
+      "hrb_nummer": null,
+      "category": "helium_consumer",
+      "notes": "MRT-Hersteller, größter Helium-Verbraucher Deutschland",
+      "anti_persona": false
+    }
+  ],
+  "$tip": "Format der entries: name + name_normalized (für Match) + hrb_nummer (optional) + category (helium_industry|helium_consumer|sachwert_anbieter|issuer) + notes (frei) + anti_persona (bool — true = NICHT als Lead, sondern Konkurrenz/Issuer-Filter)"
+}

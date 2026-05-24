@@ -118,7 +118,11 @@ export default async function DashboardPage() {
                 className="flex items-center justify-between gap-4 p-4 hover:bg-[var(--accent)]/30 transition-colors duration-150"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <Badge variant={l.tier as "t1" | "t2" | "t3"}>{l.tier.toUpperCase()}</Badge>
+                  {l.is_gold ? (
+                    <Badge variant="gold">🎯 GOLD</Badge>
+                  ) : (
+                    <Badge variant={l.tier as "t1" | "t2" | "t3"}>{l.tier.toUpperCase()}</Badge>
+                  )}
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">
                       {[l.person_first_name, l.person_last_name].filter(Boolean).join(" ")}

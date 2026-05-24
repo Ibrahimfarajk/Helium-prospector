@@ -13,6 +13,8 @@ const badgeVariants = cva(
         t1: "border-transparent bg-[oklch(0.65_0.23_27_/_0.15)] text-[oklch(0.78_0.18_27)]",
         t2: "border-transparent bg-[oklch(0.71_0.19_56_/_0.15)] text-[oklch(0.82_0.16_56)]",
         t3: "border-transparent bg-[oklch(0.78_0.15_86_/_0.12)] text-[oklch(0.85_0.13_86)]",
+        // GOLD = T1 mit Helium-/Sachwert-/Watchlist-Affinität (Phase 6.1)
+        gold: "border-[oklch(0.71_0.18_152_/_0.4)] bg-[oklch(0.71_0.18_152_/_0.15)] text-[oklch(0.85_0.16_152)] font-semibold shadow-[0_0_8px_oklch(0.71_0.18_152_/_0.2)]",
         // Status-Variants
         "status-new": "border-[var(--border)] text-[var(--muted-foreground)]",
         "status-contacted":

@@ -296,6 +296,8 @@ function mkLead(p: {
       },
       { objection: "Steuerlich komplex", response: "DBA US-DE, §15 EStG, abgedeckt" },
     ],
+    is_gold: false,
+    gold_reason: null,
     do_not_contact: false,
     do_not_contact_reason: null,
     deleted_at: null,

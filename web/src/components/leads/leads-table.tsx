@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { cn, formatRelative, statusLabel } from "@/lib/utils";
 import type { Lead, LeadStatus, LeadTier } from "@/lib/db/types";
 
-type SortKey = "posterior" | "created" | "freshness" | "name";
+type SortKey = "posterior" | "created" | "freshness" | "name" | "gold";
 
 export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
   const router = useRouter();
@@ -52,6 +52,10 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         case "name":
           return (a.person_last_name || "").localeCompare(b.person_last_name || "");
+        case "gold":
+          // GOLD first, dann nach Posterior
+          if (a.is_gold !== b.is_gold) return a.is_gold ? -1 : 1;
+          return b.posterior_score - a.posterior_score;
       }
     });
     return list;
@@ -144,6 +148,7 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
           <span className="text-xs text-[var(--muted-foreground)]">Sort</span>
           <div className="flex items-center rounded-md border border-[var(--border)] p-0.5">
             {([
+              { v: "gold", label: "🎯 Gold" },
               { v: "posterior", label: "Score" },
               { v: "freshness", label: "Frische" },
               { v: "created", label: "Datum" },
@@ -208,7 +213,13 @@ function Table({ leads, activeIdx }: { leads: Lead[]; activeIdx: number }) {
               )}
             >
               <td className="px-4 py-3 align-middle">
-                <Badge variant={l.tier as "t1" | "t2" | "t3"}>{l.tier.toUpperCase()}</Badge>
+                {l.is_gold ? (
+                  <Badge variant="gold" title={l.gold_reason || "Premium-Lead"}>
+                    🎯 GOLD
+                  </Badge>
+                ) : (
+                  <Badge variant={l.tier as "t1" | "t2" | "t3"}>{l.tier.toUpperCase()}</Badge>
+                )}
               </td>
               <td className="px-4 py-3 align-middle min-w-0">
                 <Link href={`/leads/${l.id}`} className="block min-w-0">

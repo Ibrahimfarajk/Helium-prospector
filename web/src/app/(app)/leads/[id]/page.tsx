@@ -47,8 +47,14 @@ export default async function LeadDetailPage({
 
       <header className="mb-6 flex items-start justify-between gap-4">
         <div className="space-y-2 min-w-0">
-          <div className="flex items-center gap-2">
-            <Badge variant={lead.tier as "t1" | "t2" | "t3"}>{lead.tier.toUpperCase()}</Badge>
+          <div className="flex items-center gap-2 flex-wrap">
+            {lead.is_gold ? (
+              <Badge variant="gold" title={lead.gold_reason || ""}>
+                🎯 GOLD
+              </Badge>
+            ) : (
+              <Badge variant={lead.tier as "t1" | "t2" | "t3"}>{lead.tier.toUpperCase()}</Badge>
+            )}
             <span className="text-xs text-[var(--muted-foreground)] tabular-nums">
               Posterior {(lead.posterior_score * 100).toFixed(2)}%
             </span>
@@ -56,6 +62,14 @@ export default async function LeadDetailPage({
             <span className="text-xs text-[var(--muted-foreground)]">
               Frische {lead.trigger_freshness_days} Tage
             </span>
+            {lead.is_gold && lead.gold_reason && (
+              <>
+                <span className="text-xs text-[var(--muted-foreground)]">·</span>
+                <span className="text-xs text-[oklch(0.85_0.16_152)] font-mono">
+                  {lead.gold_reason}
+                </span>
+              </>
+            )}
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">{fullName || "—"}</h1>
           <p className="text-sm text-[var(--muted-foreground)]">

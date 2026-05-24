@@ -172,6 +172,9 @@ create table leads (
     dossier_markdown   text not null,
     hook_text          text not null,
     objection_handles  jsonb not null,         -- [{objection, response_keyword}, ...]
+    -- T1-GOLD Premium-Label (Phase 6.1)
+    is_gold            boolean not null default false,
+    gold_reason        text,
     -- DSGVO / Lifecycle
     do_not_contact     boolean not null default false,
     do_not_contact_reason text,
@@ -188,6 +191,7 @@ create index leads_assigned_idx on leads (assigned_to) where assigned_to is not 
 create index leads_trigger_date_idx on leads (trigger_date desc);
 create index leads_created_idx on leads (created_at desc);
 create index leads_deleted_idx on leads (deleted_at) where deleted_at is null;
+create index leads_gold_idx on leads (is_gold) where is_gold = true;
 -- Volltext-Suche
 create index leads_search_idx on leads using gin (
     (coalesce(person_last_name, '') || ' ' || coalesce(person_first_name, '')) gin_trgm_ops

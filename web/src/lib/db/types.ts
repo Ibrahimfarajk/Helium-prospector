@@ -110,6 +110,8 @@ export type Lead = {
   dossier_markdown: string;
   hook_text: string;
   objection_handles: Array<{ objection: string; response: string }>;
+  is_gold: boolean;
+  gold_reason: string | null;
   do_not_contact: boolean;
   do_not_contact_reason: string | null;
   deleted_at: string | null;

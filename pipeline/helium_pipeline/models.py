@@ -117,6 +117,8 @@ class ScoreBreakdown(BaseModel):
     tier: LeadTier
     hard_gates_passed: bool = True
     hard_gates_failed_reasons: list[str] = Field(default_factory=list)
+    is_gold: bool = False
+    gold_reason: str | None = None
 
 
 class Lead(BaseModel):
