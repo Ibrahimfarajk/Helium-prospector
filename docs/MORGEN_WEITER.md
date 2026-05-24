@@ -24,6 +24,17 @@
 
 ---
 
+**Update 2026-05-25 (Phase 5 Tag 2 abgeschlossen):**
+- ✅ 3 Closer-Test-Accounts (ibrahimk94+closerN@outlook.de) angelegt
+- ✅ Live-Crawler handelsregister.de fertig (Cookie + Nav + Parser)
+- ✅ Bundesanzeiger auf Playwright migriert
+- ✅ Phone-Finder gehärtet (Behörden-Block + Service-Number-Filter)
+- ✅ Closer-Feedback-UI (Top/OK/Schlecht Rating-Card im Lead-Detail)
+- ⚠️ Vollständiger Live-Pipeline-Smoke-Test pendent (IP-Ban-Schutz: max 4 Sessions/Tag eingehalten)
+- ⏳ User-Action: GitHub-Secrets-Setup (5 Min)
+
+---
+
 ## Live-Services (alle ✅)
 
 | Service | URL | Status |
