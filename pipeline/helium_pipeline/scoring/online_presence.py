@@ -14,7 +14,6 @@ Rate-Limit: max 1 Lookup pro 5s. Wird nur für T2+ Leads gemacht
 
 from __future__ import annotations
 
-import asyncio
 import httpx
 import structlog
 from selectolax.parser import HTMLParser

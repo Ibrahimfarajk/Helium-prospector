@@ -7,7 +7,7 @@ import { ThumbsUp, Minus, ThumbsDown, Loader2 } from "lucide-react";
 import { rateLead, type LeadRating } from "@/app/(app)/leads/[id]/actions";
 import { cn } from "@/lib/utils";
 
-const RATINGS: Array<{ v: LeadRating; label: string; icon: React.ComponentType<any>; color: string }> = [
+const RATINGS: Array<{ v: LeadRating; label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = [
   { v: "top", label: "Top-Lead", icon: ThumbsUp, color: "text-[var(--status-won)]" },
   { v: "ok", label: "OK", icon: Minus, color: "text-[var(--muted-foreground)]" },
   { v: "schlecht", label: "Schlecht", icon: ThumbsDown, color: "text-[var(--destructive)]" },

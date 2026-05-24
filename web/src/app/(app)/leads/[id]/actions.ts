@@ -1,3 +1,6 @@
+// Supabase-SSR-Client hat bekanntes Type-Inference-Issue mit generischen
+// .from()/.update()/.insert() Calls — wir benutzen `as never` Casts.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import { revalidatePath } from "next/cache";

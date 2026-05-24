@@ -226,6 +226,36 @@ export type Database = {
         };
         Update: Partial<CrawlRun>;
       };
+      audit_log: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          action: string;
+          resource_type: string | null;
+          resource_id: string | null;
+          ip_address: string | null;
+          user_agent: string | null;
+          payload: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string | null;
+          action: string;
+          resource_type?: string | null;
+          resource_id?: string | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          payload?: Record<string, unknown> | null;
+          created_at?: string;
+        };
+        Update: Partial<{
+          action: string;
+          resource_type: string | null;
+          resource_id: string | null;
+          payload: Record<string, unknown> | null;
+        }>;
+      };
     };
     Enums: {
       lead_tier: LeadTier;

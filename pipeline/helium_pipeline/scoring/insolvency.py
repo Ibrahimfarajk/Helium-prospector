@@ -18,8 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import re
-from datetime import date
-from pathlib import Path
 
 import structlog
 from playwright.async_api import BrowserContext

@@ -103,5 +103,41 @@ Script: `pipeline/scripts/backfill_contact_channels.py` (idempotent).
 
 101/101 Pipeline-Tests grün (1.12s).
 
+---
+
+## Box 3+5+8 — Code-Sweep (Bug + Quality + a11y) ✅
+
+### Bugs gefixt
+
+1. **`lead-contact-channels.tsx`** — `openChannel` wurde im `useEffect` referenziert *bevor* deklariert. ESLint hat den klassischen TDZ-Bug gefangen. Function vor Effect hoisted.
+2. **`command-palette.tsx`** — `useEffect` rief `setValue("")` *synchron* aus, was cascading-renders triggert. Auf `queueMicrotask` umgestellt + render-derived check.
+3. **`command-palette.tsx`** — unescaped Quote in JSX (`„{value}"` → `„{value}&ldquo;`).
+4. **`bundesanzeiger.py`** — Dead-Code: `search_url`-Variable nie verwendet, entfernt.
+
+### Code-Quality
+
+- 5 unused imports entfernt (`main.py` 3×, `handelsregister.py`, `online_presence.py`, `insolvency.py`, `supabase_client.py`, `bayes.py`).
+- ESLint Errors: **13 → 0**. Verbleibende `as any` Casts in `actions.ts` + `queries.ts` sind bewusst dokumentiert (Supabase-SSR-Type-Inference-Bug, mit ESLint-disable-Block + Kommentar).
+- Added `audit_log`-Type zur `Database`-Definition (war vorher `as never`-Hack).
+
+### Accessibility-Fixes
+
+- **`lead-contact-channels.tsx`** Copy-Button: `aria-label` + `type="button"` + `focus-visible:ring-2`.
+- Show-All-Button: `aria-expanded` + Focus-Ring.
+- Bestehende Lucide-Icons in `LeadRating` haben jetzt `ComponentType<{className?: string}>` statt `any`.
+
+### Bug-Hunt — Nichts gefunden
+
+- ✅ Anti-Filter-Edge-Cases: bestehende 29 Tests in `test_anti_filters.py` covern None, leere Strings, ß/Umlaute, Mojibake.
+- ✅ Race-Conditions Multi-Channel: kein concurrent-update-Pfad existiert (immer Server-Action mit single transaction).
+- ✅ Null-Safety JSONB: `contact_channels` hat `not null default '[]'`, Frontend hat Fallback-Logic.
+- ✅ Audit-Log-Konsistenz: alle 4 Server-Actions schreiben in `audit_log`.
+
+### Test-Status
+
+- **101/101 Pipeline-Tests grün** (0.76s).
+- **TypeScript: 0 errors.**
+- **ESLint: 0 errors.**
+
 
 

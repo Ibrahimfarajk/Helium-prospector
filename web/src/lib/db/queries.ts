@@ -11,6 +11,8 @@ import { isDemoMode, demoLeads, demoActivities, demoRuns } from "./demo";
 async function db() {
   const supabase = await createClient();
   return supabase as unknown as {
+    // Supabase-SSR-Generic-Type-Inference-Bug — wir cast .from() bewusst auf any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     from: (table: string) => any;
   };
 }

@@ -83,6 +83,17 @@ export function LeadContactChannels({
   const [copied, setCopied] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState<number>(0);
 
+  function openChannel(c: ContactChannel) {
+    const href = buildHref(c);
+    if (href) {
+      if (c.channel === "phone" || c.channel === "mobile" || c.channel === "email") {
+        window.location.href = href;
+      } else {
+        window.open(href, "_blank", "noopener,noreferrer");
+      }
+    }
+  }
+
   // Keyboard shortcuts 1/2/3 → open primary channel
   useEffect(() => {
     if (top.length === 0) return;
@@ -101,18 +112,8 @@ export function LeadContactChannels({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [top]);
-
-  function openChannel(c: ContactChannel) {
-    const href = buildHref(c);
-    if (href) {
-      if (c.channel === "phone" || c.channel === "mobile" || c.channel === "email") {
-        window.location.href = href;
-      } else {
-        window.open(href, "_blank", "noopener,noreferrer");
-      }
-    }
-  }
 
   async function copyValue(value: string) {
     try {
@@ -192,8 +193,10 @@ export function LeadContactChannels({
               </div>
               <button
                 onClick={() => copyValue(c.value)}
-                className="opacity-0 group-hover:opacity-100 size-6 flex items-center justify-center rounded hover:bg-[var(--background)] transition-all"
+                className="opacity-0 group-hover:opacity-100 focus:opacity-100 size-6 flex items-center justify-center rounded hover:bg-[var(--background)] focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-all"
                 title="Kopieren"
+                aria-label={`${c.value} in Zwischenablage kopieren`}
+                type="button"
               >
                 {copied === c.value ? (
                   <Check className="size-3 text-[oklch(0.71_0.18_152)]" />
@@ -209,7 +212,9 @@ export function LeadContactChannels({
       {more.length > 0 && (
         <button
           onClick={() => setShowAll((v) => !v)}
-          className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors mt-2"
+          type="button"
+          aria-expanded={showAll}
+          className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded transition-colors mt-2"
         >
           {showAll ? "weniger anzeigen" : `+${more.length} weitere Kanäle`}
         </button>

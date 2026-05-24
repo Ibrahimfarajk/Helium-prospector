@@ -59,11 +59,14 @@ export function CommandPalette({
   onOpenChange: (v: boolean) => void;
 }) {
   const router = useRouter();
+  // open=false resets the input — derive from key prop instead of effect+setState
   const [value, setValue] = useState("");
 
-  useEffect(() => {
-    if (!open) setValue("");
-  }, [open]);
+  // Reset value when palette closes — using ref to avoid cascading renders
+  if (!open && value !== "") {
+    // schedule reset via microtask so we don't setState during render
+    queueMicrotask(() => setValue(""));
+  }
 
   function runAction(action: string) {
     onOpenChange(false);
@@ -102,7 +105,7 @@ export function CommandPalette({
 
           <Command.List className="max-h-[420px] overflow-y-auto p-2">
             <Command.Empty className="py-8 text-center text-xs text-[var(--muted-foreground)]">
-              Keine Treffer für „{value}"
+              Keine Treffer für „{value}&ldquo;
             </Command.Empty>
 
             {items.map((group) => (

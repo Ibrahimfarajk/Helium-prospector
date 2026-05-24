@@ -38,7 +38,6 @@ from .affinity import (
     is_t1_gold,
 )
 from .anti_filters import (
-    AntiFilterResult,
     address_contains_mailbox_provider,
     is_liquidation_company,
     is_sweet_spot_size,

@@ -256,12 +256,7 @@ async def fetch_company_enrichment(
         page = await context.new_page()
         await _STEALTH.apply_stealth_async(page)
 
-        # 1. Such-URL direkt aufrufen
-        search_url = (
-            f"{BUNDESANZEIGER_BASE}/pub/de/suchergebnis"
-            f"?7-1.-top%7Esearch%7EgenericSearchForm-search_param={urllib.parse.quote(company_name)}"
-        )
-        # Fallback: einfacherer GET
+        # 1. Such-URL direkt aufrufen — einfacherer GET-Form-Pfad
         simple_url = (
             f"{BUNDESANZEIGER_BASE}/pub/de/suchergebnis?"
             f"btnSuchen=Suchen&search_param={urllib.parse.quote(company_name)}"

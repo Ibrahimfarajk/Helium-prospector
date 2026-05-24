@@ -8,10 +8,8 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
-from uuid import UUID, uuid4
 
 import click
 import httpx
