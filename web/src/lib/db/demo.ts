@@ -1,13 +1,17 @@
 /**
  * Demo-Daten für UI-Screenshots/Demos ohne echte Supabase-Verbindung.
  *
- * Aktiviert via NEXT_PUBLIC_DEMO_MODE=true in .env.local
+ * Aktiviert via NEXT_PUBLIC_DEMO_MODE=true in .env.local.
+ * In Production-Builds wird `isDemoMode()` zur Build-Time auf `false` evaluiert
+ * (NEXT_PUBLIC_DEMO_MODE wird inlined), die unteren Fixtures werden tree-shaked.
  */
 
 import type { Lead, LeadActivity, CrawlRun } from "./types";
 
+export const DEMO_MODE: boolean = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 export function isDemoMode(): boolean {
-  return process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  return DEMO_MODE;
 }
 
 const today = "2026-05-24";

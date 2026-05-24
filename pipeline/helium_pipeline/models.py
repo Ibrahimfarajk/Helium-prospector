@@ -7,7 +7,7 @@ für die Pipeline darstellt (Crawl→Score→Dossier→Insert).
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -77,7 +77,7 @@ class BekanntmachungRaw(BaseModel):
     raw_text: str | None = None
     parsed_payload: dict[str, Any] = Field(default_factory=dict)
     crawl_run_id: UUID
-    crawled_at: datetime = Field(default_factory=datetime.utcnow)
+    crawled_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CompanyEnrichment(BaseModel):
@@ -160,14 +160,14 @@ class Lead(BaseModel):
 
     # Lifecycle
     do_not_contact: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CrawlRun(BaseModel):
     """Pipeline-Telemetrie — frühe Detektion der Pre-Mortem-Risiken."""
 
     id: UUID = Field(default_factory=uuid4)
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
     status: str = "running"  # running | success | failed | captcha
     pages_fetched: int = 0

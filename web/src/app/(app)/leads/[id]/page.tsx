@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Phone, Clock, FileText, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Phone, Clock, FileText, AlertTriangle, Ban } from "lucide-react";
 
 import { fetchLeadById, fetchActivities } from "@/lib/db/queries";
 import { Card } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { formatRelative } from "@/lib/utils";
 import { LeadStatusPipeline } from "@/components/leads/lead-status-pipeline";
 import { LeadNotes } from "@/components/leads/lead-notes";
 import { LeadDossier } from "@/components/leads/lead-dossier";
+import { LeadDangerActions } from "@/components/leads/lead-danger-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export default async function LeadDetailPage({
           <div className="flex items-center gap-2">
             <Badge variant={lead.tier as "t1" | "t2" | "t3"}>{lead.tier.toUpperCase()}</Badge>
             <span className="text-xs text-[var(--muted-foreground)] tabular-nums">
-              Posterior {(lead.posterior_score * 100).toFixed(1)}%
+              Posterior {(lead.posterior_score * 100).toFixed(2)}%
             </span>
             <span className="text-xs text-[var(--muted-foreground)]">·</span>
             <span className="text-xs text-[var(--muted-foreground)]">
@@ -51,6 +52,7 @@ export default async function LeadDetailPage({
             {lead.trigger_summary}
           </p>
         </div>
+        <LeadDangerActions leadId={lead.id} dnc={lead.do_not_contact} />
       </header>
 
       {lead.do_not_contact && (
@@ -101,7 +103,7 @@ export default async function LeadDetailPage({
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="size-4 text-[var(--muted-foreground)]" />
-                  <span className="text-sm">{lead.best_call_window || "Di/Mi 10-12 oder 14:30-16"}</span>
+                  <span className="text-sm">{lead.best_call_window || "—"}</span>
                 </div>
               </div>
             </div>
@@ -111,10 +113,15 @@ export default async function LeadDetailPage({
           <Card className="p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-medium">Dossier</h2>
-              <Button variant="ghost" size="sm" className="text-xs gap-1.5">
+              <a
+                href={`/leads/${lead.id}/export`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs rounded-md text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] transition-colors"
+              >
                 <FileText className="size-3.5" />
-                PDF
-              </Button>
+                Druckansicht
+              </a>
             </div>
             <LeadDossier markdown={lead.dossier_markdown} />
           </Card>
@@ -166,7 +173,9 @@ export default async function LeadDetailPage({
               </div>
               {Object.entries(lead.score_breakdown?.likelihood_ratios || {}).map(([k, v]) => (
                 <div key={k} className="flex items-center justify-between gap-3">
-                  <span className="text-[var(--muted-foreground)] truncate">{k}</span>
+                  <span className="text-[var(--muted-foreground)] truncate font-mono text-[10px]">
+                    {k}
+                  </span>
                   <span className="tabular-nums">×{Number(v).toFixed(1)}</span>
                 </div>
               ))}

@@ -9,7 +9,7 @@ import asyncio
 import json
 import re
 import sys
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -196,12 +196,14 @@ async def run_pipeline(
                         repo.upsert_bekanntmachung(bek)
                         repo.insert_lead(lead)
 
+                    # DSGVO: nur Aggregate + HRB in Logs, kein Personen-Name / Telefon
                     log.info(
                         "lead_created",
                         short_id=short_id,
                         tier=str(breakdown.tier),
                         posterior=round(breakdown.posterior, 4),
-                        company=bek.company_name,
+                        hrb=bek.hrb_nummer,
+                        court=bek.register_court,
                     )
 
             except CaptchaDetected as e:
@@ -211,7 +213,7 @@ async def run_pipeline(
                 summary["aborted_by_captcha"] = True
 
         # Finalize
-        run.finished_at = datetime.utcnow()
+        run.finished_at = datetime.now(UTC)
         run.status = run.status if run.status != "running" else "success"
         run.bekanntmachungen_found = summary["bekanntmachungen"]
         run.leads_created = summary["leads_created"]

@@ -141,17 +141,28 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <span className="text-xs text-[var(--muted-foreground)]">Sortiert nach</span>
-          <select
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="h-8 rounded-md border border-[var(--border)] bg-transparent px-2 text-xs"
-          >
-            <option value="posterior">Score</option>
-            <option value="freshness">Frische</option>
-            <option value="created">Erstellt</option>
-            <option value="name">Name</option>
-          </select>
+          <span className="text-xs text-[var(--muted-foreground)]">Sort</span>
+          <div className="flex items-center rounded-md border border-[var(--border)] p-0.5">
+            {([
+              { v: "posterior", label: "Score" },
+              { v: "freshness", label: "Frische" },
+              { v: "created", label: "Datum" },
+              { v: "name", label: "Name" },
+            ] as const).map((s) => (
+              <button
+                key={s.v}
+                onClick={() => setSortKey(s.v as SortKey)}
+                className={cn(
+                  "h-7 px-2.5 text-xs rounded transition-colors",
+                  sortKey === s.v
+                    ? "bg-[var(--accent)] text-[var(--foreground)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -25,13 +25,21 @@ function LoginInner() {
   const search = useSearchParams();
   const redirect = search.get("redirect") || "/";
 
+  function isValidEmail(s: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    const trimmed = email.trim();
+    if (!isValidEmail(trimmed)) {
+      toast.error("Bitte gültige Email-Adresse eingeben");
+      return;
+    }
     startTransition(async () => {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
+        email: trimmed,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`,
         },

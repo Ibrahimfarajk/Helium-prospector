@@ -28,9 +28,10 @@ from ..models import (
 def best_call_window(trigger_type: BekanntmachungType, person_role: str | None) -> str:
     """Empfehle Anruf-Zeitfenster basierend auf Persona."""
     role_lower = (person_role or "").lower()
-    if "arzt" in role_lower or "ärzt" in role_lower or "dr. med" in role_lower:
+    # Heilberufe: Sprechzeiten meiden
+    if any(kw in role_lower for kw in ("arzt", "ärzt", "aerzt", "dr. med", "tierarzt", "zahnarzt", "apotheker")):
         return "Mo–Fr 11:00–13:00 oder 17:00–19:00 (außerhalb Sprechzeiten)"
-    # Default GmbH-GF
+    # Default GmbH-GF / Geschäftsführer / Vorstand / Gesellschafter
     return "Di/Mi 10:00–12:00 oder 14:30–16:00"
 
 

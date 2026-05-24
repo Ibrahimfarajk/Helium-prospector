@@ -20,6 +20,8 @@ const items = [
       { id: "dashboard", label: "Dashboard öffnen", icon: LayoutDashboard, action: "nav:/" },
       { id: "leads", label: "Alle Leads", icon: ListTodo, action: "nav:/leads" },
       { id: "leads-t1", label: "Top-Leads (T1)", icon: ListTodo, action: "nav:/leads?tier=t1" },
+      { id: "leads-t2", label: "T2-Leads (Warm)", icon: ListTodo, action: "nav:/leads?tier=t2" },
+      { id: "leads-new", label: "Status: Neu", icon: ListTodo, action: "nav:/leads?status=new" },
       { id: "runs", label: "Pipeline-Runs", icon: Activity, action: "nav:/runs" },
       { id: "settings", label: "Einstellungen", icon: Settings, action: "nav:/settings" },
     ],
@@ -27,8 +29,24 @@ const items = [
   {
     group: "Aktionen",
     items: [
-      { id: "export", label: "Tagesplan exportieren (PDF)", icon: FileText, action: "noop:export-pdf" },
-      { id: "refresh", label: "Pipeline neu starten", icon: RefreshCcw, action: "noop:trigger-pipeline" },
+      {
+        id: "export-csv",
+        label: "Leads als CSV exportieren",
+        icon: FileText,
+        action: "extern:/leads/export",
+      },
+      {
+        id: "export-csv-t1",
+        label: "T1-Leads als CSV exportieren",
+        icon: FileText,
+        action: "extern:/leads/export?tier=t1",
+      },
+      {
+        id: "github",
+        label: "Pipeline-Run manuell triggern (GitHub Actions)",
+        icon: RefreshCcw,
+        action: "extern:https://github.com/Ibrahimfarajk/Helium-prospector/actions",
+      },
     ],
   },
 ];
@@ -49,8 +67,11 @@ export function CommandPalette({
 
   function runAction(action: string) {
     onOpenChange(false);
-    if (action.startsWith("nav:")) router.push(action.slice(4));
-    // andere Aktionen: implementiert je nach Feature in Phase 3.9 / 4
+    if (action.startsWith("nav:")) {
+      router.push(action.slice(4));
+    } else if (action.startsWith("extern:")) {
+      window.open(action.slice(7), "_blank", "noopener,noreferrer");
+    }
   }
 
   if (!open) return null;

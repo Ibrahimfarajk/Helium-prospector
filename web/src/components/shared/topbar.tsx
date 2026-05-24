@@ -53,7 +53,7 @@ export function TopBar({
               {(user.full_name || user.email).slice(0, 1).toUpperCase()}
             </div>
             <span className="hidden md:inline text-xs">
-              {user.full_name || user.email.split("@")[0]}
+              {user.full_name || (user.email ? user.email.split("@")[0] : "User")}
             </span>
           </Button>
 

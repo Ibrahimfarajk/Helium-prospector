@@ -37,10 +37,10 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors duration-150",
+                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all duration-150",
                 isActive
-                  ? "bg-[var(--accent)] text-[var(--foreground)] font-medium"
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]/50",
+                  ? "bg-[var(--accent)] text-[var(--foreground)] font-medium shadow-sm"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]/70",
               )}
             >
               <Icon className="size-4" />
