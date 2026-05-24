@@ -238,33 +238,51 @@ def is_anti_persona_watch_match(
 T1_GOLD_POSTERIOR_THRESHOLD = 0.30
 
 
-def is_t1_gold(posterior: float, lrs: dict[str, float]) -> tuple[bool, str | None]:
+def is_t1_gold(
+    posterior: float,
+    lrs: dict[str, float],
+    *,
+    bekanntmachung_type: str | None = None,
+    company_name: str | None = None,
+    days_since_trigger: int | None = None,
+) -> tuple[bool, str | None, dict]:
     """
-    Returns (is_gold, reason).
+    Returns (is_gold, reason, audit_info).
 
-    Drei Pfade zu GOLD:
-    1) Helium-Direct-Match oder Watch-List-Treffer (egal welcher Posterior)
-       → AUSSER bei posterior < T1_THRESHOLD (würde dem Closer schaden)
+    audit_info enthält A/B-Test-Daten:
+        - would_be_gold_without_affinity_filter: bool
+        - fat_tail_path_evaluated: bool
+
+    Pfade zu GOLD:
+    1) Helium-Direct-Match oder Watch-List-Treffer (egal welcher Posterior,
+       außer < T1_THRESHOLD)
     2) Posterior >= 0.30 → klares high-confidence
     3) Posterior >= 0.15 + ≥2 affinity_-Kategorien getroffen
+    4) (Phase 8.2 A3, gehärtet) NEW_REGISTRATION + Name-Pattern
+       (VV/Vermögensverwaltung/Holding/Beteiligungs) + freshness<14
+       + ≥1 affinity-Hit  (Härtung gegen Steuerberater-VV-GmbH-Cluster).
     """
-    from .bayes import T1_THRESHOLD  # avoid circular import at top
+    from .bayes import T1_THRESHOLD
+
+    audit_info: dict = {
+        "would_be_gold_without_affinity_filter": False,
+        "fat_tail_path_evaluated": False,
+    }
 
     has_helium_direct = "affinity_helium_direct" in lrs or "affinity_helium_direct_ja_verified" in lrs
     has_watchlist = any(k.startswith("affinity_watchlist_") for k in lrs)
 
     if posterior < T1_THRESHOLD:
-        return (False, None)  # never GOLD without T1-level posterior
+        return (False, None, audit_info)
 
     if has_helium_direct:
-        return (True, "helium_direct_match")
+        return (True, "helium_direct_match", audit_info)
     if has_watchlist:
-        return (True, "watchlist_match")
+        return (True, "watchlist_match", audit_info)
     if posterior >= T1_GOLD_POSTERIOR_THRESHOLD:
-        return (True, "high_posterior")
+        return (True, "high_posterior", audit_info)
 
     # Pfad 3: ≥2 distinct affinity categories
-    # §-Match aus Bayes-Bridge (tax_paragraph_match_ja) zählt mit als Kategorie.
     distinct_cats = {
         k.replace("affinity_", "").replace("_ja_verified", "")
         for k in lrs
@@ -273,6 +291,29 @@ def is_t1_gold(posterior: float, lrs: dict[str, float]) -> tuple[bool, str | Non
     if "tax_paragraph_match_ja" in lrs:
         distinct_cats.add("tax_paragraph_match")
     if len(distinct_cats) >= 2:
-        return (True, f"multi_category_{len(distinct_cats)}")
+        return (True, f"multi_category_{len(distinct_cats)}", audit_info)
 
-    return (False, None)
+    # ── Pfad 4: Fat-Tail (Phase 8.2 A3, gehärtet) ─────────────────────
+    # NEW_REGISTRATION + Name-Pattern + freshness<14 + ≥1 affinity-Hit.
+    fat_tail_name_pattern = re.compile(
+        r"\b(?:VV|Vermögensverwaltung|Vermoegensverwaltung|Holding|Beteiligungs?)\b",
+        re.IGNORECASE,
+    )
+    fat_tail_trigger_match = (
+        bekanntmachung_type == "new_registration"
+        and company_name is not None
+        and fat_tail_name_pattern.search(company_name) is not None
+        and days_since_trigger is not None
+        and days_since_trigger < 14
+    )
+
+    if fat_tail_trigger_match:
+        audit_info["fat_tail_path_evaluated"] = True
+        affinity_hits = len(distinct_cats)
+        if affinity_hits >= 1:
+            return (True, f"fat_tail_hardened_{affinity_hits}aff", audit_info)
+        else:
+            # Härtung greift — würde ohne Filter GOLD werden
+            audit_info["would_be_gold_without_affinity_filter"] = True
+
+    return (False, None, audit_info)

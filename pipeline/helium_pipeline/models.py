@@ -141,6 +141,12 @@ class ScoreBreakdown(BaseModel):
     # Phase 8.2 — Cluster-Cap-Aufschlüsselung pro Signal-Familie
     family_breakdown: dict[str, dict] = Field(default_factory=dict)
     """{family: {lrs, strongest_key, dimmed_keys, log_odds_contribution}}."""
+    # Phase 8.2-A1 — Reachability-Audit
+    reachability: dict[str, Any] = Field(default_factory=dict)
+    """{confidence_stars: {signal: 1-3}, no_reachability_data: bool, notes: [...]}."""
+    # Phase 8.2-A3 — Fat-Tail-Pfad A/B-Test-Daten
+    gold_audit: dict[str, Any] = Field(default_factory=dict)
+    """{would_be_gold_without_affinity_filter: bool, fat_tail_path_evaluated: bool}."""
 
 
 class Lead(BaseModel):

@@ -44,6 +44,7 @@ from .anti_filters import (
 )
 from .bafin_vermittler import is_bafin_vermittler_match
 from .offeneregister import is_mailbox_cluster_address
+from .reachability import REACHABILITY_LRS, assess_reachability
 
 # ───────────────────────────────────────────────────────────────────────────
 # Konstanten — alles zentral, leicht anpassbar nach Closer-Feedback
@@ -174,6 +175,8 @@ LR_TABLE: dict[str, float] = {
     "tax_trigger_paragr_16_34": 40.0,
     # US-Affinität (aus Firmenname/Stammdaten — keine Sprach-Analyse mehr in V2.3)
     "us_business_hint": 5.0,
+    # Phase 8.2 — Reachability (A1). Familie "reachability".
+    **REACHABILITY_LRS,
 }
 
 
@@ -182,6 +185,10 @@ class ScoringInput:
     bekanntmachung: BekanntmachungRaw
     enrichment: CompanyEnrichment | None = None
     today: date | None = None  # für Test-Reproduzierbarkeit
+    # Phase 8.2: Reachability-Input — list of ContactChannel-dicts oder None
+    contact_channels: list[dict] | None = None
+    impressum_text: str | None = None
+    company_size_class: str | None = None
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -252,8 +259,8 @@ def _check_hard_gates(inp: ScoringInput) -> tuple[bool, list[str]]:
 # ───────────────────────────────────────────────────────────────────────────
 
 
-def _collect_evidence(inp: ScoringInput) -> dict[str, float]:
-    """Sammle alle zutreffenden Evidenzen → {name: lr}."""
+def _collect_evidence(inp: ScoringInput):
+    """Sammle alle zutreffenden Evidenzen → (lrs, reachability_result)."""
     today = inp.today or date.today()
     b = inp.bekanntmachung
     e = inp.enrichment
@@ -373,7 +380,16 @@ def _collect_evidence(inp: ScoringInput) -> dict[str, float]:
     )
     lrs.update(affinity_lrs)
 
-    return lrs
+    # ─── Reachability (Phase 8.2 A1) ──────────────────────────────────
+    reach = assess_reachability(
+        contact_channels=inp.contact_channels,
+        company_name=b.company_name,
+        company_size_class=inp.company_size_class,
+        impressum_text=inp.impressum_text,
+    )
+    lrs.update(reach.lrs)
+
+    return lrs, reach
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -488,12 +504,19 @@ def score(inp: ScoringInput) -> ScoreBreakdown:
             hard_gates_failed_reasons=reasons,
         )
 
-    lrs = _collect_evidence(inp)
+    lrs, reach = _collect_evidence(inp)
     posterior, family_breakdown = _posterior_from_lrs(PRIOR, lrs)
     tier = _tier_from_posterior(posterior)
 
-    # T1-GOLD-Label (Phase 6.1) — nicht-Tier, sondern UX-Marker
-    gold, gold_reason = is_t1_gold(posterior, lrs)
+    # T1-GOLD-Label (Phase 6.1 + 8.2-A3 Fat-Tail-Härtung)
+    today = inp.today or date.today()
+    b = inp.bekanntmachung
+    gold, gold_reason, gold_audit = is_t1_gold(
+        posterior, lrs,
+        bekanntmachung_type=b.bekanntmachung_type,
+        company_name=b.company_name,
+        days_since_trigger=(today - b.bekanntmachung_date).days,
+    )
 
     return ScoreBreakdown(
         prior=PRIOR,
@@ -504,6 +527,12 @@ def score(inp: ScoringInput) -> ScoreBreakdown:
         is_gold=gold,
         gold_reason=gold_reason,
         family_breakdown=family_breakdown,
+        reachability={
+            "confidence_stars": reach.confidence,
+            "no_reachability_data": reach.no_reachability_data,
+            "notes": reach.notes,
+        },
+        gold_audit=gold_audit,
     )
 
 

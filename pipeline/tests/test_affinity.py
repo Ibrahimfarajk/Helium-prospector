@@ -192,7 +192,7 @@ def test_anti_persona_passes_through_hard_gate_check():
 
 def test_t1_gold_helium_direct():
     """Pfad 1: Helium-Direct-Match → IMMER GOLD bei T1-Posterior."""
-    is_gold, reason = is_t1_gold(
+    is_gold, reason, _ = is_t1_gold(
         posterior=0.20,
         lrs={"affinity_helium_direct": 30.0, "freshness_lt_7d": 5.0},
     )
@@ -202,7 +202,7 @@ def test_t1_gold_helium_direct():
 
 def test_t1_gold_watchlist():
     """Pfad 1b: Watchlist-Match → GOLD."""
-    is_gold, reason = is_t1_gold(
+    is_gold, reason, _ = is_t1_gold(
         posterior=0.18,
         lrs={"affinity_watchlist_helium_industry": 50.0},
     )
@@ -212,14 +212,14 @@ def test_t1_gold_watchlist():
 
 def test_t1_gold_high_posterior():
     """Pfad 2: posterior ≥ 0.30 → GOLD ohne Affinity-Hits."""
-    is_gold, reason = is_t1_gold(posterior=0.35, lrs={"ek_ge_10m": 15.0})
+    is_gold, reason, _ = is_t1_gold(0.35, {"ek_ge_10m": 15.0})
     assert is_gold is True
     assert reason == "high_posterior"
 
 
 def test_t1_gold_multi_category():
     """Pfad 3: T1 + ≥2 distinct affinity categories."""
-    is_gold, reason = is_t1_gold(
+    is_gold, reason, _ = is_t1_gold(
         posterior=0.18,
         lrs={
             "affinity_sachwerte_konkret": 12.0,
@@ -232,7 +232,7 @@ def test_t1_gold_multi_category():
 
 def test_t1_gold_single_category_not_enough():
     """Pfad 3 verlangt ≥2 — single category reicht NICHT (außer helium)."""
-    is_gold, _ = is_t1_gold(
+    is_gold, _, _ = is_t1_gold(
         posterior=0.18,
         lrs={"affinity_us_link": 6.0},
     )
@@ -241,7 +241,7 @@ def test_t1_gold_single_category_not_enough():
 
 def test_t1_gold_below_t1_never_gold():
     """Wenn Posterior < T1, niemals GOLD — auch nicht mit Helium-Match."""
-    is_gold, _ = is_t1_gold(
+    is_gold, _, _ = is_t1_gold(
         posterior=0.05,  # T2
         lrs={"affinity_helium_direct": 30.0},
     )
@@ -250,7 +250,7 @@ def test_t1_gold_below_t1_never_gold():
 
 def test_ja_verified_counts_for_multi_category():
     """JA-verified-Variante zählt als Kategorie für Multi-Hits."""
-    is_gold, _ = is_t1_gold(
+    is_gold, _, _ = is_t1_gold(
         posterior=0.18,
         lrs={
             "affinity_sachwerte_konkret_ja_verified": 18.0,
@@ -258,6 +258,79 @@ def test_ja_verified_counts_for_multi_category():
         },
     )
     assert is_gold is True
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Phase 8.2 A3: Fat-Tail-Pfad mit affinity_hits>=1-Härtung
+# ───────────────────────────────────────────────────────────────────────────
+
+
+def test_fat_tail_path_vv_gmbh_with_affinity_hit():
+    """NEW_REG + VV-Name + freshness<14 + ≥1 affinity → GOLD."""
+    is_gold, reason, audit = is_t1_gold(
+        posterior=0.16,
+        lrs={"affinity_us_link": 6.0, "trigger_new_registration_holding": 15.0},
+        bekanntmachung_type="new_registration",
+        company_name="Mustermann Vermögensverwaltung GmbH",
+        days_since_trigger=5,
+    )
+    assert is_gold is True
+    assert reason.startswith("fat_tail_hardened_")
+    assert audit["fat_tail_path_evaluated"]
+
+
+def test_fat_tail_blocked_without_affinity_hit():
+    """Steuerberater-Cluster-Case: VV-GmbH-Gründung OHNE affinity → NICHT GOLD,
+    aber A/B-Audit-Flag wird gesetzt für Vergleichsanalyse."""
+    is_gold, reason, audit = is_t1_gold(
+        posterior=0.16,
+        lrs={"trigger_new_registration_holding": 15.0},
+        bekanntmachung_type="new_registration",
+        company_name="Schmidt Vermögensverwaltung GmbH",
+        days_since_trigger=3,
+    )
+    assert is_gold is False
+    assert audit["fat_tail_path_evaluated"]
+    assert audit["would_be_gold_without_affinity_filter"]
+
+
+def test_fat_tail_freshness_too_old():
+    """VV-GmbH-Name aber 20 Tage alt → kein Fat-Tail-Pfad."""
+    is_gold, _, audit = is_t1_gold(
+        posterior=0.16,
+        lrs={"affinity_us_link": 6.0},
+        bekanntmachung_type="new_registration",
+        company_name="Holding XY GmbH",
+        days_since_trigger=20,
+    )
+    assert is_gold is False
+    assert not audit["fat_tail_path_evaluated"]
+
+
+def test_fat_tail_wrong_trigger_type():
+    """SHAREHOLDER_CHANGE ist nicht im Fat-Tail-Set."""
+    is_gold, _, audit = is_t1_gold(
+        posterior=0.16,
+        lrs={"affinity_us_link": 6.0},
+        bekanntmachung_type="shareholder_change",
+        company_name="Holding GmbH",
+        days_since_trigger=5,
+    )
+    assert is_gold is False
+    assert not audit["fat_tail_path_evaluated"]
+
+
+def test_fat_tail_name_pattern_must_match():
+    """NEW_REG + Freshness<14 aber 0815-Name → kein Fat-Tail."""
+    is_gold, _, audit = is_t1_gold(
+        posterior=0.16,
+        lrs={"affinity_us_link": 6.0},
+        bekanntmachung_type="new_registration",
+        company_name="Frische GmbH",
+        days_since_trigger=2,
+    )
+    assert is_gold is False
+    assert not audit["fat_tail_path_evaluated"]
 
 
 # ───────────────────────────────────────────────────────────────────────────
