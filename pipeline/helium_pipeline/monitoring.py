@@ -1,23 +1,21 @@
-"""Score-Drift-Monitoring (Phase 8.2 B5).
+"""Score-Drift-Monitoring (Phase 8.2 B5 + P2).
 
-Sammelt nach jedem Cron-Run die Posterior-Verteilung und vergleicht
-mit 7-Tage-rollendem Baseline.
+Persistence: Supabase-Tabelle `drift_snapshots` (Phase 8.2-P2).
+Local-JSONL ist nur Fallback wenn kein Repo verfügbar (Tests, dry-run).
 
 Architektur:
-- Posterior-Snapshot pro Run → JSON in `~/.helium-pipeline/drift/runs.jsonl`
-- Pro-Run Statistik (min/max/mean/median/p95/posterior_count)
-- 7-Tage-Baseline aus letzten 7 Runs berechnen
-- Alert wenn aktueller mean > baseline_mean + 2*sigma
+- Posterior-Snapshot pro Cron-Run (FULL + DELTA)
+- Pro-Run-Statistik (min/max/mean/median/p95/posterior_count + tier-counts)
+- 7-Tage-Baseline aus letzten 7 Snapshots (DB-side query)
+- Alert wenn aktueller mean um ≥2σ vom Baseline-Mean abweicht
 - Stichprobe: 3 zufällige GOLD-Leads pro Run ins Log
 
-WICHTIG: Alert-Mechanismus ist initial DEAKTIVIERT (kommentiert).
-Wird scharf geschaltet nach 7 Tagen echter Cron-Daten.
+Discord-Alert: nach 7 Tagen Real-Daten scharf geschaltet (siehe TODO unten).
 """
 
 from __future__ import annotations
 
 import json
-import math
 import random
 import statistics
 from dataclasses import dataclass, field
@@ -33,7 +31,7 @@ log = structlog.get_logger()
 
 _DRIFT_DIR = Path.home() / ".helium-pipeline" / "drift"
 _DRIFT_DIR.mkdir(parents=True, exist_ok=True)
-_RUNS_LOG = _DRIFT_DIR / "runs.jsonl"
+_RUNS_LOG = _DRIFT_DIR / "runs.jsonl"  # Local-Fallback (Tests / dry-run)
 
 _BASELINE_WINDOW = 7  # Runs
 _ALERT_SIGMAS = 2.0
@@ -109,8 +107,8 @@ def compute_run_snapshot(
     return snap
 
 
-def _load_baseline(window: int = _BASELINE_WINDOW) -> list[dict]:
-    """Lade die letzten N Snapshots."""
+def _load_baseline_local(window: int = _BASELINE_WINDOW) -> list[dict]:
+    """Fallback: lade letzte N Snapshots aus Local-JSONL (Tests/Dry-Run)."""
     if not _RUNS_LOG.exists():
         return []
     rows = []
@@ -157,9 +155,25 @@ def _check_drift(snap: RunSnapshot, baseline: list[dict]) -> dict | None:
     return None
 
 
-def record_run(snap: RunSnapshot) -> None:
-    """Append snapshot zu runs.jsonl. Checke Drift gegen Baseline."""
-    baseline = _load_baseline()
+def record_run(snap: RunSnapshot, *, repo: Any = None) -> None:
+    """Persist snapshot. Checke Drift gegen Baseline.
+
+    Args:
+        snap: berechneter Snapshot.
+        repo: SupabaseRepo wenn DB-Persistence gewünscht (Production).
+            Falls None: Fallback auf Local-JSONL (Tests/Dry-Run).
+    """
+    # Baseline aus DB bevorzugt, sonst local
+    baseline: list[dict] = []
+    if repo is not None:
+        try:
+            baseline = repo.fetch_recent_drift_snapshots(limit=_BASELINE_WINDOW)
+        except Exception as e:
+            log.warning("drift_baseline_db_fail", error=str(e))
+            baseline = []
+    if not baseline:
+        baseline = _load_baseline_local()
+
     snap.alert = _check_drift(snap, baseline)
 
     if snap.alert:
@@ -170,9 +184,7 @@ def record_run(snap: RunSnapshot) -> None:
             baseline_mean=snap.alert["baseline_mean"],
             current_mean=snap.alert["current_mean"],
         )
-        # TODO: nach 7 Tagen Real-Daten Discord-Webhook scharf schalten:
-        # if snap.alert["severity"] == "high":
-        #     send_discord_alert(snap.alert)
+        # TODO Phase 8.3: Discord-Webhook scharf schalten nach 7d Real-Daten.
 
     log.info(
         "score_drift_snapshot",
@@ -182,9 +194,9 @@ def record_run(snap: RunSnapshot) -> None:
         posterior_mean=round(snap.posterior_mean, 4),
         posterior_p95=round(snap.posterior_p95, 4),
         tier_counts=snap.tier_counts,
+        alert=snap.alert,
     )
 
-    # Append zu JSONL
     row = {
         "run_id": snap.run_id,
         "timestamp": snap.timestamp,
@@ -201,5 +213,16 @@ def record_run(snap: RunSnapshot) -> None:
         "gold_sample_reasons": snap.gold_sample_reasons,
         "alert": snap.alert,
     }
+
+    # Primary: Supabase
+    if repo is not None:
+        try:
+            ok = repo.insert_drift_snapshot(row)
+            if ok:
+                return  # done, no local-fallback
+        except Exception as e:
+            log.warning("drift_db_insert_fail_using_local_fallback", error=str(e))
+
+    # Fallback: Local-JSONL
     with _RUNS_LOG.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(row, ensure_ascii=False) + "\n")

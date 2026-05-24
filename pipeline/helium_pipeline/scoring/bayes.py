@@ -46,6 +46,7 @@ from .bafin_vermittler import is_bafin_vermittler_match
 from .momentum import compute_momentum_lr
 from .negative_features import NEGATIVE_LRS, assess_negative_features
 from .offeneregister import is_mailbox_cluster_address
+from .predecessor_funds import PREDECESSOR_FUND_LRS, lookup_predecessor_funds
 from .reachability import REACHABILITY_LRS, assess_reachability
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -188,10 +189,8 @@ LR_TABLE: dict[str, float] = {
     # Phase 8.2 — Negative Features (B2). Familie "negative" (eigene Familie
     # damit Penalties nicht durch positive Affinity-LRs gedimmt werden).
     **NEGATIVE_LRS,
-    # Phase 8.2 — Vorgänger-Fonds (B3 STUB, real impl in 8.3).
-    # affinity_-Prefix → Affinität-Familie.
-    "affinity_predecessor_fund_1": 3.0,
-    "affinity_predecessor_fund_2plus": 6.0,
+    # Phase 8.2 — Vorgänger-Fonds (B3). Family Affinität via affinity_ prefix.
+    **PREDECESSOR_FUND_LRS,
 }
 
 
@@ -207,6 +206,9 @@ class ScoringInput:
     # Phase 8.2-B1: Vorherige Bekanntmachungen derselben Firma (90-Tage-Fenster)
     # Format: list of {hrb_nummer, company_name, bekanntmachung_date}
     previous_bekanntmachungen: list[dict] | None = None
+    # Phase 8.2-B3: Lead-Person für Vorgänger-Fonds-Cross-Match
+    person_first_name: str | None = None
+    person_last_name: str | None = None
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -416,6 +418,15 @@ def _collect_evidence(inp: ScoringInput):
         today=today,
     )
     lrs.update(neg.lrs)
+
+    # ─── Vorgänger-Fonds-Cross-Match (Phase 8.2 B3) ───────────────────
+    if inp.person_last_name:
+        pf = lookup_predecessor_funds(
+            person_first_name=inp.person_first_name,
+            person_last_name=inp.person_last_name,
+        )
+        if pf.lr_key and pf.lr_value:
+            lrs[pf.lr_key] = pf.lr_value
 
     # ─── Momentum (Phase 8.2 B1) ──────────────────────────────────────
     if inp.previous_bekanntmachungen:

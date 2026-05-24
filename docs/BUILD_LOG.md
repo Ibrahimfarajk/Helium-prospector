@@ -537,9 +537,109 @@ Cap          : ×5.0
 
 ### Was BEWUSST nicht in 8.2
 
-- **B3 Real-Implementation** → 8.3 (Time-Box-Realismus)
-- **Rescore-CLI-Command** → 8.3 (für Delta-Cron-Modus)
 - **Discord-Drift-Alert** → 8.3 (nach 7 Tagen Baseline-Daten)
 - **GF-Historiengraph** → 8.3 (User-Plan)
 - **Frontend-UI für family_breakdown/reachability_stars** → 8.3 (User entscheidet)
+
+---
+
+## Phase 8.2 — Loose-Ends Closing (2026-05-24)
+
+### P1 — rescore-CLI ✅
+
+`helium-pipeline rescore --limit 30 --min-tier t2 [--dry-run]` für Delta-Cron-Runs (09/13 UTC ohne HR-Crawl).
+
+- Holt aktive Leads aus DB (sort by posterior DESC, limit N, not deleted, not DNC).
+- Rück-rekonstruiert Enrichment aus `score_breakdown.likelihood_ratios` (untere Schwellen → konservativ-konsistent).
+- Holt vorherige Bekanntmachungen für Momentum (90d-Fenster).
+- Re-scoret + updated `posterior_score/tier/is_gold/score_breakdown/updated_at` in DB.
+- Schreibt Drift-Snapshot.
+
+**Live-Test:** 5 Leads, 3 echte Tier-Downgrades — alle waren False-Positives aus Phase-6.1 (Lead "Berg Beteiligungs GmbH" hatte fälschlich `affinity_helium_direct=30` ohne Helium im Namen). Rescore korrigiert das.
+
+**SupabaseRepo erweitert:**
+- `fetch_active_leads(min_tier, limit)`
+- `fetch_bekanntmachung(id)`
+- `fetch_company_bekanntmachungen(hrb, name, days_back)`
+- `update_lead_score(lead_id, ...)`
+- `insert_drift_snapshot(row)` + `fetch_recent_drift_snapshots(limit)`
+
+### P2 — Drift-Monitoring → Supabase ✅
+
+`monitoring.record_run(snap, *, repo)`:
+- **Primary:** Insert in `drift_snapshots`-Tabelle (Supabase).
+- **Fallback:** Local-JSONL falls Repo None ODER DB-Insert fehlschlägt (Tests/Dry-Run).
+- Baseline-Lookup ebenfalls DB-first.
+
+**DB-Migration:** `shared/migrations/2026-05-24_phase82_drift_snapshots.sql`
+```
+drift_snapshots (uuid pk, run_id fk, posterior_*-stats, tier_counts jsonb,
+                 gold_sample_ids jsonb, alert jsonb, …)
++ index timestamp DESC + partial index where alert != null
++ RLS: nur Admin-Read
+```
+
+**Tests:** 3 zusätzliche in `test_monitoring.py` (DB-Path, Fallback, Insert-Failure-Fallback).
+
+### P3 — B3 Vorgänger-Fonds (Real-Implementation) ✅
+
+**Time-Box-Decision dokumentiert:** BaFin-Datenbank ist nicht praktikabel scraping-bar — 5min Test bestätigt 404 auf direkte URL, JS-Form, falsche Daten-Ebene (Emittenten statt Anleger). Stattdessen kuratierte JSON-Liste — User-pflegbar wie `bafin_vermittler.json`.
+
+**`shared/predecessor_funds.json`** — 50 Einträge:
+- Schiffsfonds (Lloyd, Wölbern, HCI, MPC, König, Hansa, …)
+- Solar (Solar Millennium, Conergy, Q-Cells, …)
+- Container/Direktinvest (P&R, Buss Capital, Magellan, …)
+- Wind/Bio (Prokon, Windreich, Forest Finance, …)
+- Mid-Cap/PE (Aurelius, MIG, Doric, …)
+- Immobilien (Hahn, Real I.S., Hesse Newman, …)
+
+**Match-Logik (`scoring/predecessor_funds.py`):**
+- Last-Name Normalisierung: Müller↔Mueller, Wölbern↔Woelbern, Diakritika-Strip via NFKD, Bindestrich→Space
+- `name_variants` aus JSON werden mit-indexiert
+- Index: normalisierter Last-Name → list of (fund_name, person)
+- First-Name-Filter: wenn gegeben und JSON-Entry hat first → Initial muss matchen (verhindert False-Positives bei Last="Müller")
+
+**LRs (User-Spec):**
+- `affinity_predecessor_fund_1` ×3.0 (1 Hit)
+- `affinity_predecessor_fund_2plus` ×6.0 (2+ Hits)
+- Family: **affinitaet** (via `affinity_`-Prefix → Cluster-Cap-konform)
+- Zählt als **eigene Kategorie** für Multi-Category-GOLD-Pfad
+
+**Tests:** 17 neue (`test_predecessor_funds.py`):
+- Name-Normalisierung (6 Parametrize-Cases inkl. Umlaute, Diakritika, Bindestrich)
+- Lookup-Logik (Wölbern, Mueller-Variante, Soltau 2+ Hits, Initial-Filter)
+- Bayes-Integration (1-Hit-Boost, kein-Match-Stille, Multi-Cat-Aktivierung)
+
+**3 neue Synthetic-Cases:**
+- `B3-0-HITS`: Normaler Name → kein Boost, T1 ohne GOLD (~20%)
+- `B3-1-HIT`: Heinrich Wölbern → 1 Hit, T1 mit GOLD (~42%)
+- `B3-2PLUS-HITS`: Christoph Soltau → 2+ Hits (Lloyd+HCI), T1 mit GOLD (~60%)
+
+### Phase 8.2 — Endgültiger Status (alle Loose-Ends geschlossen)
+
+| Komponente | Status | Tests |
+|---|---|---|
+| A1 Reachability | ✅ | 28 |
+| A2 Cluster-Cap | ✅ | (in scoring) |
+| A3 Fat-Tail-Härtung + Audit | ✅ Variante I | 5 |
+| A4 Synthetic-Generator (28 Cases) | ✅ | 5 |
+| B1 Momentum (90d, cap×5) | ✅ | 7 |
+| B2 Negative Features (eigene Familie) | ✅ | 13 |
+| **B3 Predecessor Funds (REAL)** | ✅ kuratierte JSON + Match-Logik | **17** |
+| B4 JA-Stale-Penalty | ✅ | 3 |
+| B5 Drift-Monitoring → Supabase | ✅ DB-primary, JSONL-Fallback | 5 |
+| **P1 rescore-CLI** | ✅ mit Enrichment-Rück-Rekonstruktion | (live-test) |
+| **P2 Drift → Supabase** | ✅ + Migration-SQL | 3 zusätzlich |
+| Cron 3× täglich smart-schedule | ✅ | n/a |
+
+**186/186 Pytest grün** (von 167 vor P1-P3).
+**28/28 Synthetic-Cases OK** (von 25 — +3 B3-Cases).
+
+### User-Aktion erforderlich
+
+**Migration `drift_snapshots`** muss in Supabase SQL-Editor ausgeführt werden:
+```
+shared/migrations/2026-05-24_phase82_drift_snapshots.sql
+```
+Bis dahin: Drift-Monitoring fällt graceful auf Local-JSONL zurück (siehe `test_record_run_falls_back_to_jsonl_on_db_error`).
 | **Cron** | Workflow eingerichtet, **Secrets-Setup ausstehend** |

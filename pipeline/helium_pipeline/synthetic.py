@@ -47,6 +47,9 @@ class SyntheticCase:
     expected_gold: bool
     expected_gold_reason: str | None  # Substring-Match
     notes: str
+    # Phase 8.2-B3: optional person für Vorgänger-Fonds-Cross-Match
+    person_first_name: str | None = None
+    person_last_name: str | None = None
 
 
 def _bek(
@@ -455,6 +458,52 @@ CASES: list[SyntheticCase] = [
         expected_gold_reason="helium_direct",
         notes="Helium + Inhabergefürht → Top-Lead.",
     ),
+    # ─── B3 — Vorgänger-Fonds (3 zusätzliche Cases) ───────────────────
+    SyntheticCase(
+        id="B3-0-HITS",
+        label="Lead-Person ohne Vorgänger-Fonds-Bezug (0 Hits, kein Boost)",
+        bek=_bek(name="Test GmbH", btype=BekanntmachungType.SHAREHOLDER_CHANGE, days_old=10),
+        enr=CompanyEnrichment(hrb_nummer="HRB B30", equity_eur=1_500_000),
+        contact_channels=_channels_inhaber(),
+        size_class="klein",
+        impressum_text=None,
+        expected_tier=LeadTier.T1,
+        expected_gold=False,
+        expected_gold_reason=None,
+        person_first_name="Hans",
+        person_last_name="Brendlbauer-Fischer",
+        notes="Normaler Name → kein Predecessor-Fund-Hit, Posterior ~20% (knapp T1, kein GOLD).",
+    ),
+    SyntheticCase(
+        id="B3-1-HIT",
+        label="Lead-Person = 1 Vorgänger-Fonds-Hit (Wölbern) → ×3 LR",
+        bek=_bek(name="Test GmbH", btype=BekanntmachungType.SHAREHOLDER_CHANGE, days_old=10),
+        enr=CompanyEnrichment(hrb_nummer="HRB B31", equity_eur=1_500_000),
+        contact_channels=_channels_inhaber(),
+        size_class="klein",
+        impressum_text=None,
+        expected_tier=LeadTier.T1,
+        expected_gold=True,
+        expected_gold_reason="high_posterior",
+        person_first_name="Heinrich",
+        person_last_name="Wölbern",
+        notes="Wölbern in Wölbern Invest → predecessor_fund_1 ×3 in Affinität-Familie.",
+    ),
+    SyntheticCase(
+        id="B3-2PLUS-HITS",
+        label="Lead-Person = 2+ Vorgänger-Fonds-Hits (Soltau) → ×6 LR",
+        bek=_bek(name="Test GmbH", btype=BekanntmachungType.SHAREHOLDER_CHANGE, days_old=10),
+        enr=CompanyEnrichment(hrb_nummer="HRB B32", equity_eur=1_500_000),
+        contact_channels=_channels_inhaber(),
+        size_class="klein",
+        impressum_text=None,
+        expected_tier=LeadTier.T1,
+        expected_gold=True,
+        expected_gold_reason="high_posterior",
+        person_first_name="Christoph",
+        person_last_name="Soltau",
+        notes="Soltau in Lloyd Fonds + HCI → predecessor_fund_2plus ×6.",
+    ),
     SyntheticCase(
         id="EDGE-CLUSTER-INFL",
         label="Cluster-Cap dämpft Aktivität (T1 mit Reachability-Boost, kein GOLD)",
@@ -491,6 +540,8 @@ def run_all() -> dict:
             contact_channels=c.contact_channels,
             company_size_class=c.size_class,
             impressum_text=c.impressum_text,
+            person_first_name=c.person_first_name,
+            person_last_name=c.person_last_name,
             today=today,
         ))
         tier_match = (

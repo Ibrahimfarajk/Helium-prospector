@@ -73,8 +73,8 @@ def test_check_drift_high_deviation():
     assert alert["deviation_sigmas"] > 2.0
 
 
-def test_record_run_writes_jsonl(tmp_path, monkeypatch):
-    """record_run schreibt Snapshot in runs.jsonl."""
+def test_record_run_writes_jsonl_fallback(tmp_path, monkeypatch):
+    """record_run schreibt Snapshot in runs.jsonl wenn repo=None."""
     test_file = tmp_path / "runs.jsonl"
     monkeypatch.setattr("helium_pipeline.monitoring._RUNS_LOG", test_file)
     monkeypatch.setattr("helium_pipeline.monitoring._DRIFT_DIR", tmp_path)
@@ -86,7 +86,7 @@ def test_record_run_writes_jsonl(tmp_path, monkeypatch):
         posterior_min=0.01, posterior_max=0.5, posterior_mean=0.2,
         posterior_median=0.15, posterior_p95=0.45,
     )
-    record_run(snap)
+    record_run(snap, repo=None)
 
     assert test_file.exists()
     lines = test_file.read_text(encoding="utf-8").strip().split("\n")
@@ -94,3 +94,55 @@ def test_record_run_writes_jsonl(tmp_path, monkeypatch):
     row = json.loads(lines[0])
     assert row["run_id"] == "testrun"
     assert row["n_kept"] == 3
+
+
+def test_record_run_uses_db_when_repo_given(tmp_path, monkeypatch):
+    """Phase 8.2-P2: wenn repo gegeben, schreibe nach DB, nicht JSONL."""
+    test_file = tmp_path / "runs.jsonl"
+    monkeypatch.setattr("helium_pipeline.monitoring._RUNS_LOG", test_file)
+    from helium_pipeline.monitoring import record_run
+
+    inserted: list[dict] = []
+
+    class FakeRepo:
+        def fetch_recent_drift_snapshots(self, *, limit):
+            return []
+        def insert_drift_snapshot(self, row):
+            inserted.append(row)
+            return True
+
+    snap = RunSnapshot(
+        run_id="db-run", timestamp="2026-05-24T11:00:00Z",
+        n_scored=10, n_kept=7, n_gold=2,
+        posterior_min=0.01, posterior_max=0.6, posterior_mean=0.18,
+        posterior_median=0.14, posterior_p95=0.5,
+    )
+    record_run(snap, repo=FakeRepo())
+
+    assert len(inserted) == 1
+    assert inserted[0]["run_id"] == "db-run"
+    # JSONL-File darf NICHT existieren (DB-Path success)
+    assert not test_file.exists()
+
+
+def test_record_run_falls_back_to_jsonl_on_db_error(tmp_path, monkeypatch):
+    """Wenn DB-Insert fehlschlägt, schreibe in JSONL."""
+    test_file = tmp_path / "runs.jsonl"
+    monkeypatch.setattr("helium_pipeline.monitoring._RUNS_LOG", test_file)
+    from helium_pipeline.monitoring import record_run
+
+    class BrokenRepo:
+        def fetch_recent_drift_snapshots(self, *, limit):
+            return []
+        def insert_drift_snapshot(self, row):
+            return False  # Insert fail
+
+    snap = RunSnapshot(
+        run_id="fb-run", timestamp="2026-05-24T12:00:00Z",
+        n_scored=5, n_kept=3, n_gold=1,
+        posterior_min=0.01, posterior_max=0.5, posterior_mean=0.2,
+        posterior_median=0.15, posterior_p95=0.45,
+    )
+    record_run(snap, repo=BrokenRepo())
+
+    assert test_file.exists()  # fallback got used

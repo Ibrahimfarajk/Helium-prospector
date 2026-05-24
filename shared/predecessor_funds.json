@@ -1,0 +1,352 @@
+{
+  "$schema": "Kurierte Liste bekannter Schiffs-/Solar-/Container-/Bio-Fonds + ihrer GFs/Vorstände/Initiatoren. Cross-Match auf Person-Last-Name aus Helium-Prospector-Leads → starkes Sachwert-Affinitäts-Signal.",
+  "$instructions": "User-pflegbar. Sources: Wikipedia, anlegerschutz.de Forum, geschlossene-fonds.de Insolvenzberichte. Schreibvarianten in 'name_variants' eintragen wenn Person z.B. mal Müller mal Mueller geschrieben wird.",
+  "version": 1,
+  "updated_at": "2026-05-24",
+  "entries": [
+    {
+      "fund_name": "Lloyd Fonds AG",
+      "fund_type": "Schiffsfonds",
+      "year": 2002,
+      "persons": [
+        {"last": "Wiese", "first": "Achim", "name_variants": []},
+        {"last": "Soltau", "first": "Christoph", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Wölbern Invest",
+      "fund_type": "Immobilien/Schiff",
+      "year": 1999,
+      "persons": [
+        {"last": "Wölbern", "first": "Heinrich", "name_variants": ["Woelbern", "Wölbern"]}
+      ]
+    },
+    {
+      "fund_name": "HCI Capital",
+      "fund_type": "Schiffsfonds",
+      "year": 2000,
+      "persons": [
+        {"last": "Soltau", "first": "Christoph", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Conti Reederei",
+      "fund_type": "Schiffsfonds",
+      "year": 1995,
+      "persons": []
+    },
+    {
+      "fund_name": "MPC Capital",
+      "fund_type": "Schiffsfonds/Immobilien",
+      "year": 1994,
+      "persons": [
+        {"last": "Brodersen", "first": "Axel", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Norddeutsche Vermögen",
+      "fund_type": "Schiffsfonds",
+      "year": 1998,
+      "persons": []
+    },
+    {
+      "fund_name": "König & Cie.",
+      "fund_type": "Schiffsfonds/Immobilien",
+      "year": 1999,
+      "persons": [
+        {"last": "König", "first": "Tobias", "name_variants": ["Koenig"]}
+      ]
+    },
+    {
+      "fund_name": "Hansa Treuhand",
+      "fund_type": "Schiffsfonds",
+      "year": 1985,
+      "persons": []
+    },
+    {
+      "fund_name": "Magellan Maritime Services",
+      "fund_type": "Schiffsfonds/Container",
+      "year": 2010,
+      "persons": [
+        {"last": "Pohlmann", "first": "Ulf-Eberhard", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "P+S Werften",
+      "fund_type": "Schiffsbau-Beteiligung",
+      "year": 1990,
+      "persons": []
+    },
+    {
+      "fund_name": "Solar Millennium",
+      "fund_type": "Solar-Fonds",
+      "year": 1998,
+      "persons": [
+        {"last": "Otten", "first": "Hans", "name_variants": []},
+        {"last": "Riffelmacher", "first": "Christoph", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "S.A.G. Solarstrom",
+      "fund_type": "Solar-Beteiligung",
+      "year": 1998,
+      "persons": []
+    },
+    {
+      "fund_name": "Sunways AG",
+      "fund_type": "Solar-Beteiligung",
+      "year": 1993,
+      "persons": []
+    },
+    {
+      "fund_name": "Conergy AG",
+      "fund_type": "Solar-Beteiligung",
+      "year": 1998,
+      "persons": [
+        {"last": "Knietsch", "first": "Hans-Martin", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Q-Cells",
+      "fund_type": "Solar-Anleihe",
+      "year": 1999,
+      "persons": [
+        {"last": "Beerhalter", "first": "Anton", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Magnum Solar",
+      "fund_type": "Solar-Direktinvest",
+      "year": 2008,
+      "persons": []
+    },
+    {
+      "fund_name": "Buss Capital",
+      "fund_type": "Container-Direktinvest",
+      "year": 1998,
+      "persons": [
+        {"last": "Buss", "first": "Marc", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "P&R Container",
+      "fund_type": "Container-Direktinvest",
+      "year": 1975,
+      "persons": [
+        {"last": "Roth", "first": "Heinz", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Magellan Container",
+      "fund_type": "Container-Direktinvest",
+      "year": 2008,
+      "persons": []
+    },
+    {
+      "fund_name": "Solen GmbH",
+      "fund_type": "Container-Direktinvest",
+      "year": 2010,
+      "persons": []
+    },
+    {
+      "fund_name": "TVP Treuhand",
+      "fund_type": "Direktinvestment Treuhänder",
+      "year": 1995,
+      "persons": []
+    },
+    {
+      "fund_name": "GHF Greens",
+      "fund_type": "Bio-Energy",
+      "year": 2005,
+      "persons": []
+    },
+    {
+      "fund_name": "Prokon Regenerative Energien",
+      "fund_type": "Wind-Genussrechte",
+      "year": 1995,
+      "persons": [
+        {"last": "Rodbertus", "first": "Carsten", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Windreich AG",
+      "fund_type": "Wind-Beteiligung",
+      "year": 1999,
+      "persons": [
+        {"last": "Balz", "first": "Willi", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Windwärts Energie",
+      "fund_type": "Wind-Beteiligung",
+      "year": 1994,
+      "persons": []
+    },
+    {
+      "fund_name": "Lange Holzwirtschaft",
+      "fund_type": "Wald-Investment",
+      "year": 2005,
+      "persons": []
+    },
+    {
+      "fund_name": "Life Forestry",
+      "fund_type": "Wald-Investment",
+      "year": 2006,
+      "persons": []
+    },
+    {
+      "fund_name": "Forest Finance",
+      "fund_type": "Wald-Investment",
+      "year": 1995,
+      "persons": [
+        {"last": "Klocke", "first": "Harry", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "MeineErnte",
+      "fund_type": "Agrar-Investment",
+      "year": 2010,
+      "persons": []
+    },
+    {
+      "fund_name": "Geneart AG",
+      "fund_type": "Biotech-Beteiligung",
+      "year": 1999,
+      "persons": []
+    },
+    {
+      "fund_name": "Aurelius Equity Opportunities",
+      "fund_type": "Mid-Cap-Beteiligung",
+      "year": 2005,
+      "persons": [
+        {"last": "Trinkaus", "first": "Dirk", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "MIG Fonds",
+      "fund_type": "Venture-Beteiligung",
+      "year": 2004,
+      "persons": []
+    },
+    {
+      "fund_name": "Aragon AG",
+      "fund_type": "Vermögensberater-Konzern",
+      "year": 2003,
+      "persons": []
+    },
+    {
+      "fund_name": "Doric Asset Finance",
+      "fund_type": "Flugzeug-Beteiligung",
+      "year": 2003,
+      "persons": []
+    },
+    {
+      "fund_name": "Hannover Leasing",
+      "fund_type": "Flugzeug/Immobilien-Beteiligung",
+      "year": 1981,
+      "persons": []
+    },
+    {
+      "fund_name": "Dr. Peters Group",
+      "fund_type": "Schiff/Flugzeug-Direktinvest",
+      "year": 1975,
+      "persons": [
+        {"last": "Peters", "first": "Anselm", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Hesse Newman Capital",
+      "fund_type": "Immobilien-Beteiligung",
+      "year": 2007,
+      "persons": [
+        {"last": "Newman", "first": "Marc", "name_variants": []},
+        {"last": "Hesse", "first": "Christoph", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "BAC Berlin Atlantic Capital",
+      "fund_type": "USA-Immobilien",
+      "year": 1995,
+      "persons": []
+    },
+    {
+      "fund_name": "Real I.S.",
+      "fund_type": "Immobilien-Beteiligung",
+      "year": 1991,
+      "persons": []
+    },
+    {
+      "fund_name": "Hahn-Immobilien-Beteiligungen",
+      "fund_type": "Immobilien-Beteiligung",
+      "year": 1982,
+      "persons": [
+        {"last": "Hahn", "first": "Michael", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "IDEA Capital Funds",
+      "fund_type": "Private Equity",
+      "year": 2007,
+      "persons": []
+    },
+    {
+      "fund_name": "OwnerShip Maritime",
+      "fund_type": "Schiff-Direktinvest",
+      "year": 2005,
+      "persons": [
+        {"last": "Müller", "first": "Lars", "name_variants": ["Mueller"]}
+      ]
+    },
+    {
+      "fund_name": "Ideenkapital AG",
+      "fund_type": "Diverse Sachwerte",
+      "year": 2000,
+      "persons": []
+    },
+    {
+      "fund_name": "FHH Fonds",
+      "fund_type": "Schiff/Immobilien",
+      "year": 1996,
+      "persons": [
+        {"last": "Heesch", "first": "Felix", "name_variants": []}
+      ]
+    },
+    {
+      "fund_name": "Premium Capital",
+      "fund_type": "Schiff/Immobilien",
+      "year": 2003,
+      "persons": []
+    },
+    {
+      "fund_name": "VCH Investment Group",
+      "fund_type": "Schiff/Immobilien",
+      "year": 1998,
+      "persons": []
+    },
+    {
+      "fund_name": "Heitkamp & Söhne",
+      "fund_type": "Bauträger-Beteiligung",
+      "year": 1980,
+      "persons": []
+    },
+    {
+      "fund_name": "Salus Beteiligungen",
+      "fund_type": "Healthcare-Direktinvest",
+      "year": 2008,
+      "persons": []
+    },
+    {
+      "fund_name": "BioGate AG",
+      "fund_type": "Biotech-Beteiligung",
+      "year": 2000,
+      "persons": []
+    },
+    {
+      "fund_name": "Mineralbrunnen Überkingen-Teinach",
+      "fund_type": "Konsum-Beteiligung",
+      "year": 1985,
+      "persons": []
+    }
+  ],
+  "$tip": "Match-Logik: Last-Name (mit Schreibvarianten) → 1 Hit = LR ×3 (Familie Affinität), 2+ Hits = LR ×6. Name 'Müller' matched 'Mueller' und vice versa."
+}

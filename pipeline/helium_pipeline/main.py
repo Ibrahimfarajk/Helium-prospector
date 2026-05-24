@@ -10,6 +10,7 @@ import json
 import re
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 
 import click
 import httpx
@@ -72,6 +73,8 @@ async def run_pipeline(
         "tiers": {"t1": 0, "t2": 0, "t3": 0, "dropped": 0},
         "sample_dossiers": [],
     }
+    # Phase 8.2-B5: scored_leads für Drift-Monitoring sammeln
+    scored_leads_for_drift: list[dict] = []
 
     try:
         async with httpx.AsyncClient(
@@ -124,6 +127,16 @@ async def run_pipeline(
                             today=today,
                         )
                     )
+
+                    # Drift-Monitor: jeden gescorten Lead sammeln
+                    scored_leads_for_drift.append({
+                        "lead_id": str(bek.id),
+                        "posterior": float(breakdown.posterior),
+                        "tier": breakdown.tier.value if hasattr(breakdown.tier, "value") else str(breakdown.tier),
+                        "is_gold": bool(breakdown.is_gold),
+                        "gold_reason": breakdown.gold_reason,
+                        "hard_gates_passed": bool(breakdown.hard_gates_passed),
+                    })
 
                     if not should_keep(breakdown):
                         summary["tiers"]["dropped"] += 1
@@ -219,6 +232,16 @@ async def run_pipeline(
         run.status = run.status if run.status != "running" else "success"
         run.bekanntmachungen_found = summary["bekanntmachungen"]
         run.leads_created = summary["leads_created"]
+
+        # Drift-Monitor: Snapshot über alle scored Leads dieses Runs
+        if scored_leads_for_drift:
+            from .monitoring import compute_run_snapshot, record_run as record_drift
+            snap = compute_run_snapshot(
+                run_id=run.id,
+                scored_leads=scored_leads_for_drift,
+            )
+            record_drift(snap, repo=repo if not dry_run else None)
+            summary["drift_alert"] = snap.alert
 
         if not dry_run and repo:
             repo.update_crawl_run(
@@ -410,6 +433,262 @@ def run_cmd(
             max_leads=max_leads,
         )
     )
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Phase 8.2-P1: rescore-CLI für Delta-Cron-Runs (09/13 UTC)
+# ───────────────────────────────────────────────────────────────────────────
+
+
+def _reconstruct_enrichment_from_lrs(
+    *, hrb_nummer: str, old_lrs: dict, today_year: int
+):
+    """Rück-Rekonstruktion eines CompanyEnrichment aus alten LR-Keys.
+
+    Wir nutzen die LR-Keys als Indikator welche Schwellen erreicht waren
+    und setzen Werte am UNTEREN Rand der Schwelle (konservativ). So bleibt
+    der Re-Score konsistent mit der ursprünglichen Score-Entscheidung.
+
+    Achtung: das ist VERMUTLICH genau genug für Tier-Stabilität, nicht für
+    LR-Wert-Veränderungen wenn die Schwellen sich ändern.
+    """
+    from .models import CompanyEnrichment
+
+    enr = CompanyEnrichment(hrb_nummer=hrb_nummer or "RESCORE")
+
+    # EK
+    if "ek_ge_10m" in old_lrs:
+        enr.equity_eur = 10_000_000.0
+    elif "ek_ge_2m" in old_lrs:
+        enr.equity_eur = 2_000_000.0
+    elif "ek_ge_500k" in old_lrs:
+        enr.equity_eur = 500_000.0
+
+    # Liquide Mittel
+    if "liquid_assets_ge_5m" in old_lrs:
+        enr.liquid_assets_eur = 5_000_000.0
+    elif "liquid_assets_ge_1m" in old_lrs:
+        enr.liquid_assets_eur = 1_000_000.0
+    elif "liquid_assets_ge_500k" in old_lrs:
+        enr.liquid_assets_eur = 500_000.0
+
+    # Operating Cashflow
+    if "operating_cashflow_ge_1m" in old_lrs:
+        enr.operating_cashflow_eur = 1_000_000.0
+    elif "operating_cashflow_ge_500k" in old_lrs:
+        enr.operating_cashflow_eur = 500_000.0
+    elif "operating_cashflow_ge_200k" in old_lrs:
+        enr.operating_cashflow_eur = 200_000.0
+    elif "cashflow_negative" in old_lrs:
+        enr.operating_cashflow_eur = -1.0  # any negative
+
+    # Profit
+    if "profit_ge_1m" in old_lrs:
+        enr.profit_eur = 1_000_000.0
+    elif "profit_ge_500k" in old_lrs:
+        enr.profit_eur = 500_000.0
+    elif "profit_ge_200k" in old_lrs:
+        enr.profit_eur = 200_000.0
+
+    # Paragraph + WpHG
+    enr.has_paragraph_match = "tax_paragraph_match_ja" in old_lrs
+    if "wphg_voting_rights_5plus" in old_lrs:
+        enr.wphg_voting_rights_count = 5
+    elif "wphg_voting_rights_3plus" in old_lrs:
+        enr.wphg_voting_rights_count = 3
+
+    # Name-Hints (für Affinity-Rekonstruktion sind die schon im name selber)
+    enr.has_family_office_hint = "name_family_office" in old_lrs
+    enr.has_us_business_hint = "us_business_hint" in old_lrs
+
+    # last_ja_year — wenn liquidity_data_stale-Flag NICHT gesetzt war, ist JA frisch.
+    # Setze auf today_year falls Liquiditäts-Daten da sind und kein stale-Flag.
+    if "liquidity_data_stale" in old_lrs:
+        enr.last_ja_year = today_year - 3  # absichtlich alt
+    elif enr.liquid_assets_eur or enr.operating_cashflow_eur or enr.profit_eur:
+        enr.last_ja_year = today_year - 1  # frisch
+
+    return enr
+
+
+def _rescore_pipeline(*, limit: int, min_tier: str, dry_run: bool) -> dict:
+    """Hol aktive Leads, re-score mit aktuellen Filtern + Drift-Monitor."""
+    from datetime import date as date_cls
+    from uuid import uuid4
+
+    from .models import (
+        BekanntmachungRaw as BekRaw,
+        BekanntmachungType,
+        CompanyEnrichment,
+        CountryCode,
+        CrawlRun,
+    )
+    from .monitoring import compute_run_snapshot, record_run
+    from .scoring.bayes import ScoringInput, score
+
+    configure_logging()
+    run = CrawlRun(notes="rescore-only (delta-mode)")
+    log.info("rescore_start", run_id=str(run.id), limit=limit, min_tier=min_tier)
+
+    repo = SupabaseRepo()
+    repo.insert_crawl_run(run)
+
+    leads = repo.fetch_active_leads(min_tier=min_tier, limit=limit)
+    summary: dict[str, Any] = {
+        "run_id": str(run.id),
+        "mode": "rescore",
+        "fetched": len(leads),
+        "rescored": 0,
+        "tier_changes": [],
+        "scored_leads": [],
+    }
+
+    for lead in leads:
+        bek_id = lead.get("bekanntmachung_id")
+        if not bek_id:
+            continue
+        bek_row = repo.fetch_bekanntmachung(bek_id)
+        if not bek_row:
+            continue
+
+        # Rekonstruiere BekanntmachungRaw + Enrichment aus DB
+        try:
+            bek = BekRaw(
+                id=bek_row["id"],
+                source=bek_row.get("source", "rescore"),
+                bekanntmachung_type=BekanntmachungType(bek_row["bekanntmachung_type"]),
+                hrb_nummer=bek_row.get("hrb_nummer"),
+                register_court=bek_row.get("register_court"),
+                company_name=bek_row["company_name"],
+                company_legal_form=bek_row.get("company_legal_form"),
+                company_address=bek_row.get("company_address"),
+                company_postal_code=bek_row.get("company_postal_code"),
+                company_city=bek_row.get("company_city"),
+                country_code=CountryCode(bek_row.get("country_code", "DE")),
+                bekanntmachung_date=date_cls.fromisoformat(bek_row["bekanntmachung_date"]),
+                raw_html=bek_row.get("raw_html"),
+                raw_text=bek_row.get("raw_text"),
+                parsed_payload=bek_row.get("parsed_payload") or {},
+                crawl_run_id=bek_row.get("crawl_run_id") or run.id,
+            )
+        except Exception as e:
+            log.warning("rescore_bek_parse_failed", bek_id=bek_id, error=str(e))
+            continue
+
+        # Enrichment aus altem score_breakdown rück-rekonstruieren.
+        # Wir nutzen die LR-Keys als Indikator welche Schwellen erreicht waren
+        # und setzen Werte am UNTEREN Rand der Schwelle (konservativ).
+        # Das hält Re-Score-Konsistenz mit der ursprünglichen Score-Entscheidung.
+        old_breakdown = lead.get("score_breakdown") or {}
+        old_lrs = old_breakdown.get("likelihood_ratios") or {}
+        enrichment = _reconstruct_enrichment_from_lrs(
+            hrb_nummer=bek.hrb_nummer or "RESCORE",
+            old_lrs=old_lrs,
+            today_year=date_cls.today().year,
+        )
+
+        # Momentum: hol previous Bekanntmachungen aus DB
+        previous_beks = repo.fetch_company_bekanntmachungen(
+            hrb_nummer=bek.hrb_nummer,
+            company_name=bek.company_name,
+            days_back=90,
+        )
+
+        # Re-Score
+        new_breakdown = score(ScoringInput(
+            bekanntmachung=bek,
+            enrichment=enrichment,
+            contact_channels=lead.get("contact_channels") or None,
+            previous_bekanntmachungen=previous_beks,
+            person_first_name=lead.get("person_first_name"),
+            person_last_name=lead.get("person_last_name"),
+        ))
+
+        old_tier = lead.get("tier")
+        new_tier = new_breakdown.tier if isinstance(new_breakdown.tier, str) else new_breakdown.tier.value
+        if old_tier != new_tier:
+            summary["tier_changes"].append({
+                "lead_id": lead["id"],
+                "old_tier": old_tier,
+                "new_tier": new_tier,
+                "old_post": lead.get("posterior_score"),
+                "new_post": round(new_breakdown.posterior, 4),
+            })
+
+        if not dry_run:
+            repo.update_lead_score(
+                lead["id"],
+                posterior_score=new_breakdown.posterior,
+                tier=new_tier,
+                is_gold=new_breakdown.is_gold,
+                gold_reason=new_breakdown.gold_reason,
+                score_breakdown=new_breakdown.model_dump(),
+            )
+        summary["rescored"] += 1
+        summary["scored_leads"].append({
+            "lead_id": lead["id"],
+            "posterior": new_breakdown.posterior,
+            "tier": new_tier,
+            "is_gold": new_breakdown.is_gold,
+            "gold_reason": new_breakdown.gold_reason,
+            "hard_gates_passed": new_breakdown.hard_gates_passed,
+        })
+
+    # Drift-Monitor: snapshot über die rescored Leads
+    snap = compute_run_snapshot(
+        run_id=run.id,
+        scored_leads=summary["scored_leads"],
+    )
+    record_run(snap, repo=repo)
+    summary["drift_alert"] = snap.alert
+
+    # Finalize crawl_run
+    run.finished_at = datetime.now(UTC)
+    run.status = "success"
+    run.leads_created = 0  # rescore creates none
+    run.notes = f"rescore: {summary['rescored']}/{summary['fetched']} leads, {len(summary['tier_changes'])} tier changes"
+    repo.update_crawl_run(
+        run.id,
+        {
+            "finished_at": run.finished_at,
+            "status": run.status,
+            "leads_created": run.leads_created,
+            "notes": run.notes,
+        },
+    )
+
+    log.info("rescore_done", **{k: v for k, v in summary.items() if k != "scored_leads"})
+    return summary
+
+
+@cli.command("rescore")
+@click.option("--limit", default=30, show_default=True, help="Max Leads zum Re-Scoren")
+@click.option(
+    "--min-tier",
+    type=click.Choice(["t1", "t2", "t3"]),
+    default="t2",
+    show_default=True,
+    help="Nur Leads ab diesem Tier",
+)
+@click.option("--dry-run", is_flag=True, help="Kein DB-Write")
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path),
+    default=Path("./local_data"),
+    show_default=True,
+)
+def rescore_cmd(limit: int, min_tier: str, dry_run: bool, output_dir: Path):
+    """Re-score active leads with current filters + drift-monitor.
+
+    Use-case: Delta-Cron-Runs (09/13 UTC) ohne HR-Crawl.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summary = _rescore_pipeline(limit=limit, min_tier=min_tier, dry_run=dry_run)
+    summary_file = output_dir / f"rescore_summary_{summary['run_id']}.json"
+    summary_file.write_text(
+        json.dumps(summary, indent=2, default=str), encoding="utf-8"
+    )
+    log.info("rescore_summary_written", path=str(summary_file))
 
 
 if __name__ == "__main__":
