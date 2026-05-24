@@ -147,6 +147,9 @@ class ScoreBreakdown(BaseModel):
     # Phase 8.2-A3 — Fat-Tail-Pfad A/B-Test-Daten
     gold_audit: dict[str, Any] = Field(default_factory=dict)
     """{would_be_gold_without_affinity_filter: bool, fat_tail_path_evaluated: bool}."""
+    # Phase 8.2-B2 — Negative Features die gefeuert haben
+    negative_features: dict[str, Any] = Field(default_factory=dict)
+    """{matched: [...], notes: [...]}."""
 
 
 class Lead(BaseModel):

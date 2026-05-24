@@ -43,6 +43,7 @@ from .anti_filters import (
     is_sweet_spot_size,
 )
 from .bafin_vermittler import is_bafin_vermittler_match
+from .negative_features import NEGATIVE_LRS, assess_negative_features
 from .offeneregister import is_mailbox_cluster_address
 from .reachability import REACHABILITY_LRS, assess_reachability
 
@@ -78,6 +79,7 @@ FAMILY_VERMOEGEN = "vermoegen"
 FAMILY_AKTIVITAET = "aktivitaet"
 FAMILY_AFFINITAET = "affinitaet"
 FAMILY_REACHABILITY = "reachability"
+FAMILY_NEGATIVE = "negative"  # Phase 8.2 B2 — Negative Pattern-Penalties
 FAMILY_OTHER = "other"  # uncapped, fully multiplicative
 
 DIMINISHING_WEIGHT = 0.5  # Gewicht für nicht-stärkste LRs in derselben Familie
@@ -129,6 +131,8 @@ def _family_of(lr_key: str) -> str:
         return FAMILY_REACHABILITY
     if lr_key.startswith("momentum_"):
         return FAMILY_AKTIVITAET
+    if lr_key.startswith("negative_"):
+        return FAMILY_NEGATIVE
     return LR_FAMILY.get(lr_key, FAMILY_OTHER)
 
 
@@ -177,6 +181,9 @@ LR_TABLE: dict[str, float] = {
     "us_business_hint": 5.0,
     # Phase 8.2 — Reachability (A1). Familie "reachability".
     **REACHABILITY_LRS,
+    # Phase 8.2 — Negative Features (B2). Familie "negative" (eigene Familie
+    # damit Penalties nicht durch positive Affinity-LRs gedimmt werden).
+    **NEGATIVE_LRS,
 }
 
 
@@ -389,7 +396,17 @@ def _collect_evidence(inp: ScoringInput):
     )
     lrs.update(reach.lrs)
 
-    return lrs, reach
+    # ─── Negative Features (Phase 8.2 B2) ─────────────────────────────
+    neg = assess_negative_features(
+        company_name=b.company_name,
+        raw_text=b.raw_text,
+        last_ja_year=e.last_ja_year if e else None,
+        bekanntmachung_date=b.bekanntmachung_date,
+        today=today,
+    )
+    lrs.update(neg.lrs)
+
+    return lrs, reach, neg
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -504,7 +521,7 @@ def score(inp: ScoringInput) -> ScoreBreakdown:
             hard_gates_failed_reasons=reasons,
         )
 
-    lrs, reach = _collect_evidence(inp)
+    lrs, reach, neg = _collect_evidence(inp)
     posterior, family_breakdown = _posterior_from_lrs(PRIOR, lrs)
     tier = _tier_from_posterior(posterior)
 
@@ -533,6 +550,10 @@ def score(inp: ScoringInput) -> ScoreBreakdown:
             "notes": reach.notes,
         },
         gold_audit=gold_audit,
+        negative_features={
+            "matched": neg.matched,
+            "notes": neg.notes,
+        },
     )
 
 
