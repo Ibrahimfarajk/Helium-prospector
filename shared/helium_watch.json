@@ -1,8 +1,8 @@
 {
   "$schema": "Manuelle Watch-Liste: Firmen mit bekanntem Helium-/Sachwert-/Direktbeteiligungs-Bezug. Bei Lead-Match → automatisch T1-GOLD.",
   "$instructions": "Editiere diese Datei manuell, jede entry wird im nächsten Pipeline-Run gematcht. Match auf 'name_normalized' (lowercase) ODER 'hrb_nummer'. Behalte LR bei 50.0 (höchster Boost).",
-  "version": 1,
-  "updated_at": "2026-05-25",
+  "version": 2,
+  "updated_at": "2026-05-24",
   "entries": [
     {
       "name": "NASCO Energie & Rohstoff AG",
@@ -42,6 +42,30 @@
       "hrb_nummer": null,
       "category": "helium_consumer",
       "notes": "MRT-Hersteller, größter Helium-Verbraucher Deutschland",
+      "anti_persona": false
+    },
+    {
+      "name": "Messer Group",
+      "name_normalized": "messer group",
+      "hrb_nummer": null,
+      "category": "helium_industry",
+      "notes": "Industriegas-Konzern DACH (Privatfirma Familie Messer) — Helium-Lieferant",
+      "anti_persona": false
+    },
+    {
+      "name": "Air Products",
+      "name_normalized": "air products",
+      "hrb_nummer": null,
+      "category": "helium_industry",
+      "notes": "US-Helium-Lieferant mit DACH-Töchtern (Air Products GmbH)",
+      "anti_persona": false
+    },
+    {
+      "name": "Bruker Corporation",
+      "name_normalized": "bruker",
+      "hrb_nummer": null,
+      "category": "helium_consumer",
+      "notes": "NMR/Massenspektrometrie-Hersteller, Helium-Großverbraucher (Bruker BioSpin)",
       "anti_persona": false
     }
   ],
