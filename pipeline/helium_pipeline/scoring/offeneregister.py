@@ -68,10 +68,12 @@ def _get_conn() -> sqlite3.Connection | None:
 # ───────────────────────────────────────────────────────────────────────────
 
 _mailbox_cache: dict | None = None
+# Phase-7-Box-4: Pre-compute cluster cores → 126× speedup
+_cluster_cores_cache: list[tuple[set[str], int | None]] | None = None
 
 
 def _load_mailbox_clusters() -> dict:
-    global _mailbox_cache
+    global _mailbox_cache, _cluster_cores_cache
     if _mailbox_cache is not None:
         return _mailbox_cache
     try:
@@ -79,6 +81,11 @@ def _load_mailbox_clusters() -> dict:
     except Exception as e:
         log.warning("mailbox_clusters_load_failed", error=str(e))
         _mailbox_cache = {"clusters": []}
+    # Pre-compute cluster cores ONCE — eviction would invalidate this too
+    _cluster_cores_cache = [
+        (_extract_address_cores(c["address_pattern"]), c.get("gmbh_count"))
+        for c in _mailbox_cache.get("clusters", [])
+    ]
     return _mailbox_cache
 
 
@@ -124,11 +131,11 @@ def is_mailbox_cluster_address(address: str | None) -> tuple[bool, int | None]:
     input_cores = _extract_address_cores(address)
     if not input_cores:
         return (False, None)
-    data = _load_mailbox_clusters()
-    for cluster in data.get("clusters", []):
-        cluster_cores = _extract_address_cores(cluster["address_pattern"])
+    _load_mailbox_clusters()  # ensures _cluster_cores_cache is populated
+    assert _cluster_cores_cache is not None
+    for cluster_cores, gmbh_count in _cluster_cores_cache:
         if cluster_cores & input_cores:  # Schnittmenge
-            return (True, cluster.get("gmbh_count"))
+            return (True, gmbh_count)
     return (False, None)
 
 

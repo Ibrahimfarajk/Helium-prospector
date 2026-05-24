@@ -139,5 +139,53 @@ Script: `pipeline/scripts/backfill_contact_channels.py` (idempotent).
 - **TypeScript: 0 errors.**
 - **ESLint: 0 errors.**
 
+---
+
+## Box 4 — Performance-Audit ✅
+
+### Hot-Path-Finding: Mailbox-Cluster-Matching war 50× zu langsam
+
+**Profile (1000 typische Leads, alle Hard-Gates):**
+
+```
+cProfile vorher:
+  1000 leads scored in 6572 ms = 6.572 ms/lead
+  -> 6.290s davon in is_mailbox_cluster_address (96%)
+  -> _extract_address_cores wurde 301.000× aufgerufen
+     (300 cluster × 1000 leads + 1× input)
+```
+
+**Root-Cause:**
+Für jeden Lead wurde die komplette 300-Entry Mailbox-Cluster-Liste *neu geparsed* — gleicher Regex-Sub auf gleichem String, 300.000× im Hot-Path.
+
+**Fix:** `_cluster_cores_cache` — pre-computed `set[str]` pro Cluster, einmalig beim Lazy-Load (`offeneregister.py:_load_mailbox_clusters`).
+
+**Profile (nach Fix):**
+
+```
+1000 leads scored in 126 ms = 0.126 ms/lead
+=> 52× schneller (6.572s → 126ms)
+```
+
+**Production-Impact:**
+- Daily-Cron crawled max ~200 Bekanntmachungen → war 1.3s, jetzt 25ms.
+- Bei künftigem Skalierung auf 10.000 Leads/Tag: war 65s, jetzt 1.3s.
+
+### DB-Index-Audit
+
+23 Indexes in `db_schema.sql`. Coverage für alle häufigen Queries:
+- `leads_score_idx`, `leads_tier_idx`, `leads_status_idx`, `leads_gold_idx` (partial)
+- `leads_assigned_idx` (partial, where assigned_to not null) → Closer-Filter
+- `leads_search_idx` GIN-trigram für Namens-Suche
+- `lead_assignments_active_unique` → garantiert keine Doppel-Zuweisungen
+- `bek_raw_company_idx` GIN-trigram für Crawler-Match
+
+**Keine fehlenden Indexes identifiziert.** GIN für `contact_channels` JSONB wurde in Box-2-Migration mit aufgenommen.
+
+### Frontend-Performance
+
+- Mit 13 Leads kein messbares Issue. Lead-Liste rendert <100ms (TTI auf 4G).
+- Wenn künftig 1000+ Leads: Pagination (`fetchLeads` hat schon `.limit()`). Aktuell kein Cursor-Pagination — wird Phase 8 Issue wenn Volume kommt.
+
 
 
