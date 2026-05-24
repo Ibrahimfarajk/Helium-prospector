@@ -11,13 +11,21 @@
  * gehandled.
  */
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<div className="min-h-svh" />}>
+      <CallbackInner />
+    </Suspense>
+  );
+}
+
+function CallbackInner() {
   const router = useRouter();
   const search = useSearchParams();
   const [err, setErr] = useState<string | null>(null);
