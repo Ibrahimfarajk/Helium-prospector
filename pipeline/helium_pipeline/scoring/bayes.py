@@ -43,6 +43,7 @@ from .anti_filters import (
     is_sweet_spot_size,
 )
 from .bafin_vermittler import is_bafin_vermittler_match
+from .momentum import compute_momentum_lr
 from .negative_features import NEGATIVE_LRS, assess_negative_features
 from .offeneregister import is_mailbox_cluster_address
 from .reachability import REACHABILITY_LRS, assess_reachability
@@ -99,6 +100,7 @@ LR_FAMILY: dict[str, str] = {
     "profit_ge_500k": FAMILY_VERMOEGEN,
     "profit_ge_1m": FAMILY_VERMOEGEN,
     "cashflow_negative": FAMILY_VERMOEGEN,
+    "liquidity_data_stale": FAMILY_VERMOEGEN,
     # ─── Aktivität ─────────────────────────────────────────────────────
     "freshness_lt_7d": FAMILY_AKTIVITAET,
     "freshness_7_14d": FAMILY_AKTIVITAET,
@@ -154,6 +156,8 @@ LR_TABLE: dict[str, float] = {
     "ek_ge_500k": 3.0,
     "ek_ge_2m": 8.0,
     "ek_ge_10m": 15.0,
+    # Phase 8.2-B4: Liquiditäts-Daten alt (Bundesanzeiger >= 18 Mo) → dämpfen
+    "liquidity_data_stale": 0.5,
     # Phase 6.5-F1: Cashflow-Indikator (echte Liquidität, nicht nur EK-Buchwert)
     "liquid_assets_ge_500k": 4.0,
     "liquid_assets_ge_1m": 8.0,
@@ -196,6 +200,9 @@ class ScoringInput:
     contact_channels: list[dict] | None = None
     impressum_text: str | None = None
     company_size_class: str | None = None
+    # Phase 8.2-B1: Vorherige Bekanntmachungen derselben Firma (90-Tage-Fenster)
+    # Format: list of {hrb_nummer, company_name, bekanntmachung_date}
+    previous_bekanntmachungen: list[dict] | None = None
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -405,6 +412,31 @@ def _collect_evidence(inp: ScoringInput):
         today=today,
     )
     lrs.update(neg.lrs)
+
+    # ─── Momentum (Phase 8.2 B1) ──────────────────────────────────────
+    if inp.previous_bekanntmachungen:
+        m_lr, m_count, m_reason = compute_momentum_lr(
+            hrb_nummer=b.hrb_nummer,
+            company_name=b.company_name,
+            today=today,
+            other_bekanntmachungen=inp.previous_bekanntmachungen,
+        )
+        if m_lr is not None:
+            lrs[f"momentum_score_{m_count}_triggers"] = m_lr
+
+    # ─── JA-Stale-Penalty (Phase 8.2 B4) ──────────────────────────────
+    # Wenn JA-Daten > 18 Mo alt UND ein Liquiditäts-LR gefeuert hat:
+    # dämpfe mit ×0.5 (LR_TABLE["liquidity_data_stale"]).
+    # Grund: Liquide Mittel von vor 2 Jahren sind nicht zuverlässig.
+    if e and e.last_ja_year is not None:
+        years_old = today.year - e.last_ja_year
+        ja_stale = years_old >= 2  # 18+ Mo
+        liquidity_fired = any(
+            k.startswith("liquid_assets_") or k.startswith("operating_cashflow_")
+            for k in lrs
+        )
+        if ja_stale and liquidity_fired:
+            lrs["liquidity_data_stale"] = LR_TABLE["liquidity_data_stale"]
 
     return lrs, reach, neg
 

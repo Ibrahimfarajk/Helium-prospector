@@ -133,6 +133,57 @@ def test_steuerberater_vv_with_negative_filter():
     assert "law_tax_firm_no_investment" in result.negative_features["matched"]
 
 
+def test_ja_stale_penalty_fires():
+    """B4: Wenn last_ja_year >=2 Jahre alt UND Liquiditäts-LR feuert → liquidity_data_stale."""
+    bek = BekanntmachungRaw(
+        source="t", bekanntmachung_type=BekanntmachungType.SHAREHOLDER_CHANGE,
+        company_name="Test GmbH",
+        bekanntmachung_date=date.today() - timedelta(days=3),
+        country_code=CountryCode.DE, crawl_run_id=uuid4(),
+    )
+    enr = CompanyEnrichment(
+        hrb_nummer="HRB1", equity_eur=800_000,
+        last_ja_year=2023,  # 3 Jahre alt bei today=2026
+        liquid_assets_eur=2_000_000,
+    )
+    result = score(ScoringInput(bekanntmachung=bek, enrichment=enr))
+    assert "liquidity_data_stale" in result.likelihood_ratios
+
+
+def test_ja_recent_no_stale_penalty():
+    """B4: Aktueller JA → kein stale-Penalty."""
+    bek = BekanntmachungRaw(
+        source="t", bekanntmachung_type=BekanntmachungType.SHAREHOLDER_CHANGE,
+        company_name="Test GmbH",
+        bekanntmachung_date=date.today() - timedelta(days=3),
+        country_code=CountryCode.DE, crawl_run_id=uuid4(),
+    )
+    enr = CompanyEnrichment(
+        hrb_nummer="HRB1", equity_eur=800_000,
+        last_ja_year=date.today().year - 1,  # Vorjahr — frisch
+        liquid_assets_eur=2_000_000,
+    )
+    result = score(ScoringInput(bekanntmachung=bek, enrichment=enr))
+    assert "liquidity_data_stale" not in result.likelihood_ratios
+
+
+def test_ja_stale_only_no_liquidity_no_penalty():
+    """B4: alte JA OHNE Liquiditäts-LR → kein Penalty (irrelevant)."""
+    bek = BekanntmachungRaw(
+        source="t", bekanntmachung_type=BekanntmachungType.SHAREHOLDER_CHANGE,
+        company_name="Test GmbH",
+        bekanntmachung_date=date.today() - timedelta(days=3),
+        country_code=CountryCode.DE, crawl_run_id=uuid4(),
+    )
+    enr = CompanyEnrichment(
+        hrb_nummer="HRB1", equity_eur=800_000,
+        last_ja_year=2020,
+        # KEIN liquid_assets/cashflow
+    )
+    result = score(ScoringInput(bekanntmachung=bek, enrichment=enr))
+    assert "liquidity_data_stale" not in result.likelihood_ratios
+
+
 def test_real_estate_holding_penalty_drops_posterior():
     """Reine Immo-Halter werden gegenüber Investment-Holding sauber bestraft."""
     bek_pure = BekanntmachungRaw(
