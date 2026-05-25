@@ -127,11 +127,23 @@ def _check_drift(snap: RunSnapshot, baseline: list[dict]) -> dict | None:
     """Vergleiche Snap mit Baseline. Returns alert-dict wenn Drift detected.
 
     Aktuell INFO-only. Echter Alert (Discord/Email) kommt nach 7 Tagen
-    Real-Daten."""
-    if len(baseline) < 3:
-        return None  # zu wenig Datenpunkte
+    Real-Daten.
 
-    base_means = [b["posterior_mean"] for b in baseline if "posterior_mean" in b]
+    Empty-Runs (n_scored=0, z.B. Sonntag-Heartbeats) werden aus dem
+    Baseline-Set ausgeschlossen — sie würden sonst den Mean verwässern.
+    Auch wenn der aktuelle Snap leer ist: kein Drift-Check (es gibt nichts
+    zu vergleichen).
+    """
+    # Aktueller Run leer → kein Drift-Check
+    if snap.n_scored == 0:
+        return None
+
+    # Baseline: nur Runs mit echten Daten
+    real_baseline = [b for b in baseline if b.get("n_scored", 0) > 0]
+    if len(real_baseline) < 3:
+        return None  # zu wenig nicht-leere Datenpunkte
+
+    base_means = [b["posterior_mean"] for b in real_baseline if "posterior_mean" in b]
     if not base_means:
         return None
 

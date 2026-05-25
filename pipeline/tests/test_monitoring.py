@@ -27,6 +27,49 @@ def test_compute_snapshot_basic():
     assert snap.tier_counts == {"t1": 2, "t2": 1}
 
 
+def test_compute_snapshot_empty_leads_no_crash():
+    """Heartbeat-Snapshot: leere Liste darf nicht crashen."""
+    from helium_pipeline.monitoring import compute_run_snapshot
+    snap = compute_run_snapshot(run_id="empty-run", scored_leads=[])
+    assert snap.n_scored == 0
+    assert snap.n_kept == 0
+    assert snap.n_gold == 0
+    assert snap.posterior_mean == 0.0
+    assert snap.tier_counts == {}
+
+
+def test_check_drift_skips_empty_baseline():
+    """Empty-Runs (Sonntage) im Baseline werden ignoriert."""
+    snap = RunSnapshot(
+        run_id="x", timestamp="t", n_scored=20, n_kept=15, n_gold=3,
+        posterior_min=0.01, posterior_max=0.5, posterior_mean=0.16,
+        posterior_median=0.12, posterior_p95=0.4,
+    )
+    # Baseline mit 2 echten + 5 empty (sonntag/feiertag)
+    baseline = [
+        {"posterior_mean": 0.14, "n_scored": 25},
+        {"posterior_mean": 0.15, "n_scored": 22},
+        {"posterior_mean": 0.0, "n_scored": 0},  # Sonntag
+        {"posterior_mean": 0.0, "n_scored": 0},  # Feiertag
+        {"posterior_mean": 0.0, "n_scored": 0},
+        {"posterior_mean": 0.0, "n_scored": 0},
+        {"posterior_mean": 0.0, "n_scored": 0},
+    ]
+    # nur 2 echte → unter Threshold (3) → keine Alarmierung
+    assert _check_drift(snap, baseline) is None
+
+
+def test_check_drift_skips_when_current_empty():
+    """Wenn aktueller Run leer (Sonntag), kein Drift-Check."""
+    snap = RunSnapshot(
+        run_id="x", timestamp="t", n_scored=0, n_kept=0, n_gold=0,
+        posterior_min=0.0, posterior_max=0.0, posterior_mean=0.0,
+        posterior_median=0.0, posterior_p95=0.0,
+    )
+    baseline = [{"posterior_mean": 0.15, "n_scored": 20}] * 5
+    assert _check_drift(snap, baseline) is None
+
+
 def test_check_drift_no_baseline():
     snap = RunSnapshot(
         run_id="x", timestamp="t", n_scored=10, n_kept=8, n_gold=2,
@@ -46,8 +89,10 @@ def test_check_drift_no_deviation():
         posterior_median=0.12, posterior_p95=0.4,
     )
     baseline = [
-        {"posterior_mean": 0.14}, {"posterior_mean": 0.15},
-        {"posterior_mean": 0.16}, {"posterior_mean": 0.17},
+        {"posterior_mean": 0.14, "n_scored": 20},
+        {"posterior_mean": 0.15, "n_scored": 22},
+        {"posterior_mean": 0.16, "n_scored": 18},
+        {"posterior_mean": 0.17, "n_scored": 25},
     ]
     assert _check_drift(snap, baseline) is None
 
@@ -60,8 +105,10 @@ def test_check_drift_high_deviation():
         posterior_median=0.4, posterior_p95=0.8,
     )
     baseline = [
-        {"posterior_mean": 0.14}, {"posterior_mean": 0.15},
-        {"posterior_mean": 0.16}, {"posterior_mean": 0.17},
+        {"posterior_mean": 0.14, "n_scored": 20},
+        {"posterior_mean": 0.15, "n_scored": 22},
+        {"posterior_mean": 0.16, "n_scored": 18},
+        {"posterior_mean": 0.17, "n_scored": 25},
     ]
     alert = _check_drift(snap, baseline)
     assert alert is not None

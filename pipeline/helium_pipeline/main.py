@@ -260,16 +260,18 @@ async def run_pipeline(
         run.bekanntmachungen_found = summary["bekanntmachungen"]
         run.leads_created = summary["leads_created"]
 
-        # Drift-Monitor: Snapshot über alle scored Leads dieses Runs
-        if scored_leads_for_drift:
-            from .monitoring import compute_run_snapshot
-            from .monitoring import record_run as record_drift
-            snap = compute_run_snapshot(
-                run_id=run.id,
-                scored_leads=scored_leads_for_drift,
-            )
-            record_drift(snap, repo=repo if not dry_run else None)
-            summary["drift_alert"] = snap.alert
+        # Drift-Monitor: IMMER einen Snapshot schreiben (auch bei 0 Beks).
+        # Heartbeat-Indikator: jede Cron-Ausführung erzeugt einen Eintrag in
+        # drift_snapshots — auch leere Sonntag-/Feiertag-Runs. Lücken in der
+        # Tabelle bedeuten dann eindeutig: Cron lief nicht.
+        from .monitoring import compute_run_snapshot
+        from .monitoring import record_run as record_drift
+        snap = compute_run_snapshot(
+            run_id=run.id,
+            scored_leads=scored_leads_for_drift,
+        )
+        record_drift(snap, repo=repo if not dry_run else None)
+        summary["drift_alert"] = snap.alert
 
         if not dry_run and repo:
             repo.update_crawl_run(
