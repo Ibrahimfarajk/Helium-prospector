@@ -17,8 +17,8 @@ Drei Pattern-Klassen:
 from __future__ import annotations
 
 import re
-from datetime import date
 from dataclasses import dataclass
+from datetime import date
 
 import structlog
 

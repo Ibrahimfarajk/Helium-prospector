@@ -8,15 +8,17 @@ from uuid import uuid4
 import pytest
 
 from helium_pipeline.models import (
-    BekanntmachungRaw, BekanntmachungType, CompanyEnrichment, CountryCode,
+    BekanntmachungRaw,
+    BekanntmachungType,
+    CompanyEnrichment,
+    CountryCode,
 )
-from helium_pipeline.scoring.bayes import score, ScoringInput
+from helium_pipeline.scoring.bayes import ScoringInput, score
 from helium_pipeline.scoring.predecessor_funds import (
     _name_keys,
     _normalize_name,
     lookup_predecessor_funds,
 )
-
 
 # ───────────────────────────────────────────────────────────────────────────
 # Name-Normalisierung

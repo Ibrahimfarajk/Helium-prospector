@@ -23,7 +23,12 @@ function LoginInner() {
   const [emailSent, setEmailSent] = useState(false);
   const [pending, startTransition] = useTransition();
   const search = useSearchParams();
-  const redirect = search.get("redirect") || "/";
+  // Phase 8.2-Audit-P4: Open-Redirect-Schutz — nur same-origin paths
+  const redirectRaw = search.get("redirect");
+  const redirect =
+    redirectRaw && redirectRaw.startsWith("/") && !redirectRaw.startsWith("//")
+      ? redirectRaw
+      : "/";
 
   function isValidEmail(s: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());

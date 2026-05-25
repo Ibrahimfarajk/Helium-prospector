@@ -148,9 +148,9 @@ async def find_company_domain(
             "muenchen", "munich", "hamburg", "berlin", "frankfurt", "koeln",
             "stuttgart", "duesseldorf", "leipzig", "dresden", "hannover",
             "bremen", "nuernberg", "essen", "dortmund", "service-bw",
-            # Wirtschaftsauskunft
+            # Wirtschaftsauskunft (bisnode bereits oben gelistet)
             "creditreform", "schufa", "kapital", "boniforce", "moodys",
-            "dnb", "bisnode", "experian",
+            "dnb", "experian",
             # Presse / News / Aktien-Sites
             "presseportal", "finanznachrichten", "wallstreet-online",
             "ariva", "onvista", "boerse", "finanzen", "boersennews",

@@ -10,18 +10,14 @@ import pytest
 from helium_pipeline.models import (
     BekanntmachungRaw,
     BekanntmachungType,
-    CompanyEnrichment,
     CountryCode,
-    LeadTier,
 )
 from helium_pipeline.scoring.affinity import (
-    AFFINITY_CATEGORIES,
     check_affinity_signals,
     is_anti_persona_watch_match,
     is_t1_gold,
 )
-from helium_pipeline.scoring.bayes import score, ScoringInput, T1_THRESHOLD
-
+from helium_pipeline.scoring.bayes import ScoringInput, score
 
 # ───────────────────────────────────────────────────────────────────────────
 # Helper

@@ -183,11 +183,7 @@ def lookup_predecessor_funds(
             cand_first = _normalize_name(c["person"].get("first") or "")
             cand_initial = cand_first[:1] if cand_first else ""
             # Match wenn keine first-info in JSON ODER Initial passt ODER full match
-            if not cand_first:
-                filtered.append(c)
-            elif cand_initial == first_initial:
-                filtered.append(c)
-            elif cand_first == first_norm:
+            if not cand_first or cand_initial == first_initial or cand_first == first_norm:
                 filtered.append(c)
         candidates = filtered
 

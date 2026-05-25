@@ -14,7 +14,6 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ───────────────────────────────────────────────────────────────────────────
 # ENUMS (must match db_schema.sql exactly)
 # ───────────────────────────────────────────────────────────────────────────

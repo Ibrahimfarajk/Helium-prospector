@@ -17,6 +17,17 @@ import { Loader2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 
+// Phase 8.2-Audit-P4: Open-Redirect-Schutz.
+// Erlaube NUR same-origin pfade — keine vollständigen URLs zu fremden Domains.
+function sanitizeNext(raw: string | null | undefined): string {
+  if (!raw) return "/";
+  // Whitelist: muss mit "/" anfangen UND nicht "//" (protocol-relative URL)
+  if (raw.startsWith("/") && !raw.startsWith("//")) {
+    return raw;
+  }
+  return "/";
+}
+
 export default function AuthCallbackPage() {
   return (
     <Suspense fallback={<div className="min-h-svh" />}>
@@ -48,8 +59,8 @@ function CallbackInner() {
             setErr(error.message);
             return;
           }
-          // Hash entfernen + redirect
-          const next = search.get("next") || "/";
+          // Phase 8.2-Audit-P4: Open-Redirect-Schutz — nur same-origin paths
+          const next = sanitizeNext(search.get("next"));
           router.replace(next);
           return;
         }
@@ -63,7 +74,7 @@ function CallbackInner() {
           setErr(error.message);
           return;
         }
-        const next = search.get("next") || "/";
+        const next = sanitizeNext(search.get("next"));
         router.replace(next);
         return;
       }

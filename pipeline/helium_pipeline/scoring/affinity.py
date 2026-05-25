@@ -312,8 +312,7 @@ def is_t1_gold(
         affinity_hits = len(distinct_cats)
         if affinity_hits >= 1:
             return (True, f"fat_tail_hardened_{affinity_hits}aff", audit_info)
-        else:
-            # Härtung greift — würde ohne Filter GOLD werden
-            audit_info["would_be_gold_without_affinity_filter"] = True
+        # Härtung greift — würde ohne Filter GOLD werden
+        audit_info["would_be_gold_without_affinity_filter"] = True
 
     return (False, None, audit_info)

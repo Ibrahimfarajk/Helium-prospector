@@ -76,16 +76,31 @@ export function LeadDossier({ markdown }: { markdown: string }) {
   );
 }
 
+// Phase 8.2-Audit-P4: XSS-Schutz — escape HTML-Special-Chars BEVOR
+// Markdown-Replacements. Sonst können HR-Bekanntmachungs-Texte mit
+// <script>/<img onerror=...>/etc. ins DOM injected werden.
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function renderInline(text: string): string {
+  // STEP 1: Escape HTML-Special-Chars (XSS-Schutz)
+  let safe = escapeHtml(text);
+  // STEP 2: Markdown-Replacements (sichere Tags die WIR generieren)
   // bold: **text**
-  text = text.replace(
+  safe = safe.replace(
     /\*\*([^*]+)\*\*/g,
     '<strong class="font-medium text-[var(--foreground)]">$1</strong>',
   );
   // inline-code: `text`
-  text = text.replace(
+  safe = safe.replace(
     /`([^`]+)`/g,
     '<code class="font-mono text-[11px] px-1 rounded bg-[var(--muted)]">$1</code>',
   );
-  return text;
+  return safe;
 }

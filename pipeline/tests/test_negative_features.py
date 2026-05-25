@@ -5,17 +5,14 @@ from __future__ import annotations
 from datetime import date, timedelta
 from uuid import uuid4
 
-import pytest
-
 from helium_pipeline.models import (
     BekanntmachungRaw,
     BekanntmachungType,
     CompanyEnrichment,
     CountryCode,
 )
-from helium_pipeline.scoring.bayes import score, ScoringInput
+from helium_pipeline.scoring.bayes import ScoringInput, score
 from helium_pipeline.scoring.negative_features import assess_negative_features
-
 
 # ───────────────────────────────────────────────────────────────────────────
 # pure_real_estate_holding

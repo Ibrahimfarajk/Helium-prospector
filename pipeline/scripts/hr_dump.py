@@ -21,7 +21,6 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 
-
 DUMP_DIR = Path(__file__).resolve().parent.parent / "local_data" / "hr_dumps"
 DUMP_DIR.mkdir(parents=True, exist_ok=True)
 (DUMP_DIR / "screenshots").mkdir(exist_ok=True)

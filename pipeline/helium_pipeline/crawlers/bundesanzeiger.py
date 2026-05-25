@@ -303,7 +303,7 @@ async def fetch_company_enrichment(
 
 async def close_shared_context() -> None:
     """Kept for API-compat — Library hat keinen Browser-Context mehr."""
-    return None
+    return
 
 
 def _build_minimal(hrb_nummer: str, company_name: str) -> CompanyEnrichment:

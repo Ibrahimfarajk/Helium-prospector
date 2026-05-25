@@ -5,8 +5,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 from uuid import uuid4
 
-import pytest
-
 from helium_pipeline.crawlers.bundesanzeiger import (
     extract_liquid_assets_from_ja_text,
     extract_operating_cashflow_from_ja_text,
@@ -19,8 +17,7 @@ from helium_pipeline.models import (
     CompanyEnrichment,
     CountryCode,
 )
-from helium_pipeline.scoring.bayes import score, ScoringInput
-
+from helium_pipeline.scoring.bayes import ScoringInput, score
 
 # ───────────────────────────────────────────────────────────────────────────
 # F1 — Cashflow-Extraktion

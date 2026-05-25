@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from helium_pipeline.scoring.anti_filters import (
     SizeClass,
     address_contains_mailbox_provider,
@@ -12,7 +10,6 @@ from helium_pipeline.scoring.anti_filters import (
     is_liquidation_company,
     is_sweet_spot_size,
 )
-
 
 # ───────────────────────────────────────────────────────────────────────────
 # Filter 1: Liquidation-Suffix

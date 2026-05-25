@@ -10,7 +10,6 @@ from helium_pipeline.scoring.reachability import (
     is_persona_email,
 )
 
-
 # ───────────────────────────────────────────────────────────────────────────
 # is_persona_email
 # ───────────────────────────────────────────────────────────────────────────
@@ -149,10 +148,14 @@ def test_corporate_AG_but_persona_email_no_penalty():
 def test_bayes_picks_up_reachability():
     from datetime import date, timedelta
     from uuid import uuid4
+
     from helium_pipeline.models import (
-        BekanntmachungRaw, BekanntmachungType, CompanyEnrichment, CountryCode,
+        BekanntmachungRaw,
+        BekanntmachungType,
+        CompanyEnrichment,
+        CountryCode,
     )
-    from helium_pipeline.scoring.bayes import score, ScoringInput
+    from helium_pipeline.scoring.bayes import ScoringInput, score
 
     bek = BekanntmachungRaw(
         source="t", bekanntmachung_type=BekanntmachungType.SHAREHOLDER_CHANGE,
@@ -182,10 +185,14 @@ def test_bayes_picks_up_reachability():
 def test_bayes_no_reachability_data_flag():
     from datetime import date, timedelta
     from uuid import uuid4
+
     from helium_pipeline.models import (
-        BekanntmachungRaw, BekanntmachungType, CompanyEnrichment, CountryCode,
+        BekanntmachungRaw,
+        BekanntmachungType,
+        CompanyEnrichment,
+        CountryCode,
     )
-    from helium_pipeline.scoring.bayes import score, ScoringInput
+    from helium_pipeline.scoring.bayes import ScoringInput, score
 
     bek = BekanntmachungRaw(
         source="t", bekanntmachung_type=BekanntmachungType.SHAREHOLDER_CHANGE,

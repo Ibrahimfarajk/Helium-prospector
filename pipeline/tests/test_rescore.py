@@ -20,7 +20,7 @@ from helium_pipeline.models import (
     BekanntmachungType,
     CountryCode,
 )
-from helium_pipeline.scoring.bayes import score, ScoringInput
+from helium_pipeline.scoring.bayes import ScoringInput, score
 
 
 def _make_bek(name: str = "Test GmbH", btype=BekanntmachungType.SHAREHOLDER_CHANGE):

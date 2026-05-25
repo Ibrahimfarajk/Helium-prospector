@@ -17,7 +17,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 # ───────────────────────────────────────────────────────────────────────────
 # Filter 1: Liquidations-Suffix
 # ───────────────────────────────────────────────────────────────────────────
@@ -157,7 +156,7 @@ class AntiFilterResult:
     notes: dict[str, str]
 
     @classmethod
-    def empty(cls) -> "AntiFilterResult":
+    def empty(cls) -> AntiFilterResult:
         return cls(passed=True, rejected_by=[], soft_penalties={}, notes={})
 
 

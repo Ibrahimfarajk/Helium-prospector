@@ -586,7 +586,7 @@ def score(inp: ScoringInput) -> ScoreBreakdown:
         prior=PRIOR,
         likelihood_ratios=lrs,
         posterior=posterior,
-        tier=tier if tier else LeadTier.T3,  # nominal — Filter im Pipeline-Step
+        tier=tier or LeadTier.T3,  # nominal — Filter im Pipeline-Step
         hard_gates_passed=True,
         is_gold=gold,
         gold_reason=gold_reason,

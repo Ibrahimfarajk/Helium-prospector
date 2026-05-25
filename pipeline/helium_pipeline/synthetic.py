@@ -591,7 +591,7 @@ def main():
         ok = "OK" if c["ok"] else "FAIL"
         gold = f"G:{c['gold_reason'][:10]}" if c["actual_gold"] else "-"
         post = f"{c['posterior']*100:>5.1f}%" if isinstance(c["posterior"], (int, float)) else "-"
-        print(f"{c['id']:<14} {str(c['actual_tier']):<10} {post:<8} {gold:<14} {ok:<5} {c['label']}")
+        print(f"{c['id']:<14} {c['actual_tier']!s:<10} {post:<8} {gold:<14} {ok:<5} {c['label']}")
 
 
 if __name__ == "__main__":

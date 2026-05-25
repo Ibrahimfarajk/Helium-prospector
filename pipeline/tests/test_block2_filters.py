@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
-
 from helium_pipeline.scoring.bafin_vermittler import is_bafin_vermittler_match
 from helium_pipeline.scoring.offeneregister import (
-    is_mailbox_cluster_address,
     _normalize_address,
+    is_mailbox_cluster_address,
 )
-
 
 # ───────────────────────────────────────────────────────────────────────────
 # BaFin-Vermittler
@@ -76,8 +73,9 @@ def test_no_mailbox_empty():
 def test_integration_bafin_blocks_lead():
     from datetime import date, timedelta
     from uuid import uuid4
+
     from helium_pipeline.models import BekanntmachungRaw, BekanntmachungType, CountryCode
-    from helium_pipeline.scoring.bayes import score, ScoringInput
+    from helium_pipeline.scoring.bayes import ScoringInput, score
 
     bek = BekanntmachungRaw(
         source="test",
@@ -95,8 +93,9 @@ def test_integration_bafin_blocks_lead():
 def test_integration_mailbox_cluster_blocks():
     from datetime import date, timedelta
     from uuid import uuid4
+
     from helium_pipeline.models import BekanntmachungRaw, BekanntmachungType, CountryCode
-    from helium_pipeline.scoring.bayes import score, ScoringInput
+    from helium_pipeline.scoring.bayes import ScoringInput, score
 
     bek = BekanntmachungRaw(
         source="test",

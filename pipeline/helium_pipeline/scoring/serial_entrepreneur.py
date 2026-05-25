@@ -49,7 +49,7 @@ def _cache_path(first: str | None, last: str) -> Path:
     return _CACHE_DIR / f"{_cache_key(first, last)}.json"
 
 
-def _read_cache(first: str | None, last: str) -> "SerialEntrepreneurResult | None":
+def _read_cache(first: str | None, last: str) -> SerialEntrepreneurResult | None:
     p = _cache_path(first, last)
     if not p.exists():
         return None
@@ -69,7 +69,7 @@ def _read_cache(first: str | None, last: str) -> "SerialEntrepreneurResult | Non
         return None
 
 
-def _write_cache(first: str | None, last: str, result: "SerialEntrepreneurResult") -> None:
+def _write_cache(first: str | None, last: str, result: SerialEntrepreneurResult) -> None:
     p = _cache_path(first, last)
     try:
         p.write_text(

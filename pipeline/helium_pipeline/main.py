@@ -235,7 +235,8 @@ async def run_pipeline(
 
         # Drift-Monitor: Snapshot über alle scored Leads dieses Runs
         if scored_leads_for_drift:
-            from .monitoring import compute_run_snapshot, record_run as record_drift
+            from .monitoring import compute_run_snapshot
+            from .monitoring import record_run as record_drift
             snap = compute_run_snapshot(
                 run_id=run.id,
                 scored_leads=scored_leads_for_drift,
@@ -514,12 +515,12 @@ def _reconstruct_enrichment_from_lrs(
 def _rescore_pipeline(*, limit: int, min_tier: str, dry_run: bool) -> dict:
     """Hol aktive Leads, re-score mit aktuellen Filtern + Drift-Monitor."""
     from datetime import date as date_cls
-    from uuid import uuid4
 
     from .models import (
         BekanntmachungRaw as BekRaw,
+    )
+    from .models import (
         BekanntmachungType,
-        CompanyEnrichment,
         CountryCode,
         CrawlRun,
     )
