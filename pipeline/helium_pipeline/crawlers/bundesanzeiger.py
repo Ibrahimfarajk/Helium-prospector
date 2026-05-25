@@ -1,36 +1,32 @@
-"""Bundesanzeiger Jahresabschluss-Cross-Reference via Playwright.
+"""Bundesanzeiger Jahresabschluss-Cross-Reference via deutschland-Library.
 
-httpx-Variante schlug fehl mit 302 → /error (JS-Session-Cookies erforderlich).
-Playwright mit shared Persistent-Context löst das.
+Phase 8.2-Hotfix (2026-05-25): Bundesanzeiger hat seine Such-API geändert
+(search_param→fulltext, /pub/de/suchergebnis→/pub/de/start, Wicket-Framework).
+Eigenes Playwright-Scraping wurde damit instabil. Migration auf die `deutschland`-
+Library (bundesAPI/deutschland), die das Captcha-Solving + Wicket-Submit über
+ein integriertes ML-Modell stabil löst.
 
 Strategie:
-- 5-20 gezielte Lookups/Tag (NICHT massen-crawl)
-- Wieder-verwendet den selben Browser-Context wie handelsregister.de
-- Bei Captcha: gracefully return None (Lead trotzdem erstellt, nur ohne EK)
+- get_reports(company_name) → list of Reports (alle Veröffentlichungen)
+- Filter auf Jahresabschluss/Konzernabschluss
+- Nimm den NEUESTEN JA
+- Apply bestehende Regex-Parser (EK, Bilanzsumme, Cashflow, Profit, §-EStG)
+
+WICHTIG: Library macht sync HTTP-Calls. Wir wrappen in asyncio.to_thread() um
+den Pipeline-Async-Flow nicht zu blockieren.
 """
 
 from __future__ import annotations
 
 import asyncio
 import re
-import urllib.parse
-from pathlib import Path
+from datetime import datetime
 
 import structlog
-from playwright.async_api import BrowserContext, Page, async_playwright
-from playwright_stealth import Stealth
-from selectolax.parser import HTMLParser
 
 from ..models import CompanyEnrichment
 
 log = structlog.get_logger()
-
-
-BUNDESANZEIGER_BASE = "https://www.bundesanzeiger.de"
-PROFILE_DIR = Path.home() / ".helium-pipeline" / "browser-profile"
-PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-
-_STEALTH = Stealth()
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -187,168 +183,127 @@ def extract_ja_year(text: str) -> int | None:
 
 
 # ───────────────────────────────────────────────────────────────────────────
-# Browser-Context (shared mit handelsregister-Crawler)
+# Public API — deutschland-Library statt eigenes Playwright-Scraping
 # ───────────────────────────────────────────────────────────────────────────
 
 
-_browser_ctx: BrowserContext | None = None
-_pw_handle: object | None = None
+def _select_latest_ja(reports: dict) -> tuple[str, dict] | tuple[None, None]:
+    """Wähle den neuesten Jahresabschluss aus reports-dict.
+
+    Library liefert {hash: {date, name, company, report, raw_report}}.
+    Bevorzugt 'Jahresabschluss', fällt zurück auf 'Konzernabschluss'.
+    """
+    ja_candidates: list[tuple[datetime, str, dict]] = []
+    konzern_candidates: list[tuple[datetime, str, dict]] = []
+    for key, val in reports.items():
+        name = (val.get("name") or "")
+        date_val = val.get("date")
+        if not isinstance(date_val, datetime):
+            continue
+        if "Jahresabschluss" in name:
+            ja_candidates.append((date_val, key, val))
+        elif "Konzernabschluss" in name:
+            konzern_candidates.append((date_val, key, val))
+
+    if ja_candidates:
+        ja_candidates.sort(key=lambda x: x[0], reverse=True)
+        _, key, val = ja_candidates[0]
+        return key, val
+    if konzern_candidates:
+        konzern_candidates.sort(key=lambda x: x[0], reverse=True)
+        _, key, val = konzern_candidates[0]
+        return key, val
+    return None, None
 
 
-async def _get_context() -> BrowserContext:
-    """Lazy-init persistent context, shared zwischen Aufrufen."""
-    global _browser_ctx, _pw_handle
-    if _browser_ctx is not None:
-        return _browser_ctx
-
-    _pw_handle = await async_playwright().start()
-    _browser_ctx = await _pw_handle.chromium.launch_persistent_context(
-        user_data_dir=str(PROFILE_DIR),
-        headless=True,
-        user_agent=(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-        ),
-        viewport={"width": 1366, "height": 768},
-        locale="de-DE",
-        timezone_id="Europe/Berlin",
-        args=["--disable-blink-features=AutomationControlled"],
-    )
-    return _browser_ctx
-
-
-async def close_shared_context() -> None:
-    global _browser_ctx, _pw_handle
-    if _browser_ctx:
-        try:
-            await _browser_ctx.close()
-        except Exception:
-            pass
-        _browser_ctx = None
-    if _pw_handle:
-        try:
-            await _pw_handle.stop()
-        except Exception:
-            pass
-        _pw_handle = None
-
-
-# ───────────────────────────────────────────────────────────────────────────
-# Public API — drop-in replacement für httpx-Version
-# ───────────────────────────────────────────────────────────────────────────
+def _fetch_reports_sync(company_name: str) -> dict | None:
+    """Sync-Aufruf der deutschland-Library. Wird via to_thread asynchron."""
+    try:
+        from deutschland.bundesanzeiger import Bundesanzeiger
+        ba = Bundesanzeiger()
+        return ba.get_reports(company_name)
+    except Exception as e:
+        log.warning("ba_library_call_failed", error=str(e), name=company_name[:50])
+        return None
 
 
 async def fetch_company_enrichment(
     *,
     hrb_nummer: str,
     company_name: str,
-    client=None,  # Kept for API compat — wird ignoriert (httpx-AsyncClient nicht mehr nötig)
+    client=None,  # Kept for API compat — wird ignoriert
 ) -> CompanyEnrichment | None:
-    """Hole Bundesanzeiger-Jahresabschluss-Daten via Playwright.
+    """Hole Bundesanzeiger-Jahresabschluss-Daten via deutschland-Library.
 
     Returns CompanyEnrichment immer (minimal mit hrb_nummer wenn nichts gefunden).
     """
     log.info("bundesanzeiger_lookup", hrb=hrb_nummer, name=company_name[:50])
 
-    context = await _get_context()
-    page: Page | None = None
-    try:
-        page = await context.new_page()
-        await _STEALTH.apply_stealth_async(page)
+    # Library macht sync HTTP — wrap in thread damit asyncio nicht blockt
+    reports = await asyncio.to_thread(_fetch_reports_sync, company_name)
 
-        # 1. Such-URL direkt aufrufen — einfacherer GET-Form-Pfad
-        simple_url = (
-            f"{BUNDESANZEIGER_BASE}/pub/de/suchergebnis?"
-            f"btnSuchen=Suchen&search_param={urllib.parse.quote(company_name)}"
-        )
+    if not reports:
+        log.info("ba_no_reports", name=company_name[:50])
+        return _build_minimal(hrb_nummer, company_name)
 
-        try:
-            await page.goto(simple_url, wait_until="domcontentloaded", timeout=20_000)
-            await asyncio.sleep(2)
-            try:
-                await page.wait_for_load_state("networkidle", timeout=10_000)
-            except Exception:
-                pass
-        except Exception as e:
-            log.warning("ba_initial_load_failed", error=str(e))
-            return _build_minimal(hrb_nummer, company_name)
+    key, ja = _select_latest_ja(reports)
+    if not ja:
+        log.info("ba_no_ja_found", name=company_name[:50], report_count=len(reports))
+        return _build_minimal(hrb_nummer, company_name)
 
-        html = await page.evaluate("() => document.documentElement.outerHTML")
-        title = await page.title()
-        if "Fehler" in title or "error" in page.url:
-            log.info("ba_no_results_for_name", name=company_name)
-            return _build_minimal(hrb_nummer, company_name)
-        if any(kw in html.lower() for kw in ("captcha", "sicherheitsabfrage")):
-            log.warning("ba_captcha", hrb=hrb_nummer)
-            return _build_minimal(hrb_nummer, company_name)
+    text = ja.get("report") or ""
+    if not text:
+        log.warning("ba_ja_empty_report", name=company_name[:50])
+        return _build_minimal(hrb_nummer, company_name)
 
-        # 2. JA-Treffer suchen
-        tree = HTMLParser(html)
-        ja_link_node = None
-        for link in tree.css("a"):
-            txt = link.text() or ""
-            if "Jahresabschluss" in txt or "Bilanz" in txt:
-                ja_link_node = link
-                break
+    # Parser-Funktionen sind unverändert — Volltext aus Library statt aus HTML
+    equity = extract_equity_from_ja_text(text)
+    balance = extract_balance_sum_from_ja_text(text)
+    # Date aus Library (datetime) bevorzugt vor Text-Extraktion
+    ja_date = ja.get("date")
+    year = ja_date.year if isinstance(ja_date, datetime) else extract_ja_year(text)
+    liquid = extract_liquid_assets_from_ja_text(text)
+    cashflow = extract_operating_cashflow_from_ja_text(text)
+    profit = extract_profit_from_ja_text(text)
+    para_hits = extract_paragraph_matches(text)
 
-        if not ja_link_node:
-            log.info("ba_no_ja_link", hrb=hrb_nummer)
-            return _build_minimal(hrb_nummer, company_name)
+    log.info(
+        "ba_enrichment_success",
+        name=company_name[:50],
+        year=year,
+        equity=equity,
+        balance=balance,
+        liquid=liquid,
+        cashflow=cashflow,
+        profit=profit,
+        paragraphs=len(para_hits),
+    )
 
-        ja_href = ja_link_node.attributes.get("href") or ""
-        ja_url = (
-            ja_href
-            if ja_href.startswith("http")
-            else f"{BUNDESANZEIGER_BASE}{ja_href if ja_href.startswith('/') else '/' + ja_href}"
-        )
+    nm_lower = company_name.lower()
+    return CompanyEnrichment(
+        hrb_nummer=hrb_nummer,
+        last_ja_year=year,
+        equity_eur=equity,
+        balance_sum_eur=balance,
+        liquid_assets_eur=liquid,
+        operating_cashflow_eur=cashflow,
+        profit_eur=profit,
+        has_paragraph_match=bool(para_hits),
+        paragraph_matches=para_hits,
+        has_holding_in_name="holding" in nm_lower,
+        has_vermoegen_in_name=("vermögen" in nm_lower or "vermogen" in nm_lower),
+        has_family_office_hint=(
+            "family office" in nm_lower or "familyoffice" in nm_lower
+        ),
+        has_us_business_hint=(
+            "usa" in nm_lower or " us " in nm_lower or "us " in nm_lower
+        ),
+    )
 
-        # 3. JA laden
-        try:
-            await page.goto(ja_url, wait_until="domcontentloaded", timeout=20_000)
-            await asyncio.sleep(2)
-        except Exception as e:
-            log.warning("ba_ja_load_failed", error=str(e))
-            return _build_minimal(hrb_nummer, company_name)
 
-        detail_html = await page.evaluate("() => document.documentElement.outerHTML")
-        detail_text = HTMLParser(detail_html).text(separator="\n")
-
-        equity = extract_equity_from_ja_text(detail_text)
-        balance = extract_balance_sum_from_ja_text(detail_text)
-        year = extract_ja_year(detail_text)
-        # Phase 6.5-F1 + F3
-        liquid = extract_liquid_assets_from_ja_text(detail_text)
-        cashflow = extract_operating_cashflow_from_ja_text(detail_text)
-        profit = extract_profit_from_ja_text(detail_text)
-        para_hits = extract_paragraph_matches(detail_text)
-
-        nm_lower = company_name.lower()
-        return CompanyEnrichment(
-            hrb_nummer=hrb_nummer,
-            last_ja_year=year,
-            equity_eur=equity,
-            balance_sum_eur=balance,
-            liquid_assets_eur=liquid,
-            operating_cashflow_eur=cashflow,
-            profit_eur=profit,
-            has_paragraph_match=bool(para_hits),
-            paragraph_matches=para_hits,
-            has_holding_in_name="holding" in nm_lower,
-            has_vermoegen_in_name=("vermögen" in nm_lower or "vermogen" in nm_lower),
-            has_family_office_hint=(
-                "family office" in nm_lower or "familyoffice" in nm_lower
-            ),
-            has_us_business_hint=(
-                "usa" in nm_lower or " us " in nm_lower or "us " in nm_lower
-            ),
-        )
-
-    finally:
-        if page:
-            try:
-                await page.close()
-            except Exception:
-                pass
+async def close_shared_context() -> None:
+    """Kept for API-compat — Library hat keinen Browser-Context mehr."""
+    return None
 
 
 def _build_minimal(hrb_nummer: str, company_name: str) -> CompanyEnrichment:

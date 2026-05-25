@@ -17,9 +17,14 @@ dependencies = [
     "selectolax>=0.3.21",
     "tenacity>=8.5.0",
 
-    # Browser automation
+    # Browser automation (handelsregister.de noch via Playwright)
     "playwright>=1.47.0",
     "playwright-stealth>=1.0.6",
+
+    # Bundesanzeiger-Library (Phase 8.2-Hotfix nach BA-API-Change)
+    # Liefert get_reports(company_name) → list of Jahresabschlüsse mit
+    # Volltext. Captcha-Solving via integriertes ML-Modell.
+    "deutschland>=0.4.2",
 
     # Data validation
     "pydantic>=2.8.0",
