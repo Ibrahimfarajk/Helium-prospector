@@ -43,7 +43,10 @@ concurrency:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Phase 8.2-Audit-Hotfix: 60→90 als Safety-Net.
+    # Echter Fix: Pre-Score-Hard-Gates VOR BA-Call (main.py) — spart 60-80%
+    # der BA-Calls bei Real-Daten. 90 Min ist Headroom für Edge-Cases.
+    timeout-minutes: 90
 
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

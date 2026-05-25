@@ -103,6 +103,33 @@ async def run_pipeline(
                         break
                     summary["bekanntmachungen"] += 1
 
+                    # Phase 8.2-Audit-Hotfix: Pre-Score OHNE BA-Enrichment um
+                    # Hard-Gates zu prüfen. Wenn Lead schon hier rausfliegt,
+                    # sparen wir den teuren BA-Call (~30s). Bei Real-Daten
+                    # fliegen 60-80% durch Anti-Filter (Liquidation, Mailbox,
+                    # BaFin-Vermittler, etc.) — entsprechende Speedup.
+                    pre_score = score(
+                        ScoringInput(
+                            bekanntmachung=bek,
+                            enrichment=None,
+                            today=today,
+                        )
+                    )
+                    if not pre_score.hard_gates_passed:
+                        # Hard-Gate fail — kein BA, kein Dossier, kein Lead.
+                        summary["tiers"]["dropped"] += 1
+                        scored_leads_for_drift.append({
+                            "lead_id": str(bek.id),
+                            "posterior": 0.0,
+                            "tier": None,
+                            "is_gold": False,
+                            "gold_reason": None,
+                            "hard_gates_passed": False,
+                        })
+                        if not dry_run and repo:
+                            repo.upsert_bekanntmachung(bek)
+                        continue
+
                     # 1. Bundesanzeiger-Enrich (nur bei klar trigger-relevanten Typen)
                     enrichment = None
                     if bek.hrb_nummer and bek.bekanntmachung_type in {
@@ -119,7 +146,7 @@ async def run_pipeline(
                         except Exception as e:
                             log.warning("enrichment_failed", error=str(e))
 
-                    # 2. Score
+                    # 2. Re-Score MIT Enrichment (kann jetzt Vermögens-LRs feuern)
                     breakdown = score(
                         ScoringInput(
                             bekanntmachung=bek,
